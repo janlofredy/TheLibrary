@@ -169,10 +169,12 @@ const containerWrapperStyle = computed(() => {
 
   if (canTilt && (props.book.layerMode === 'leaning-left' || props.book.layerMode === 'leaning-right')) {
     if (props.book.layerMode === 'leaning-left') {
+      // Base touches right neighbor, top tilts left to touch left neighbor
       transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
       transformOrigin = 'bottom right'
       zIndex = 20
     } else {
+      // Base touches left neighbor, top tilts right to touch right neighbor
       transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
       transformOrigin = 'bottom left'
       zIndex = 20

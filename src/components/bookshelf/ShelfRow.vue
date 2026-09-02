@@ -1,54 +1,41 @@
 <template>
   <div class="relative w-full mb-8 sm:mb-12 flex flex-col group/shelf">
-    <!-- Shelf Top Ambient Occlusion Cavity (Pure Snug Wooden Bookshelf) -->
-    <div class="relative min-h-[300px] w-full flex items-end px-6 sm:px-12 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden">
+    <!-- Shelf Top Ambient Occlusion Cavity (Spatial Shelf Track) -->
+    <div class="relative min-h-[300px] w-full flex items-end px-4 sm:px-8 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden">
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
       
-      <!-- Bookshelf Floor Row (Snug Tight-Packed Spines, Free Leaning, Easy Drag Reordering) -->
-      <div class="flex items-end gap-1 sm:gap-1.5 z-10 min-w-full pb-0.5">
-        <!-- Render books with direct drag reordering -->
-        <template v-for="(book, idx) in sortedBooks" :key="book.id">
-          <div
-            class="relative flex items-end transition-transform duration-200"
-            :class="dragOverIndex === idx ? 'scale-[1.03] -translate-y-1' : ''"
-            @dragover.prevent="handleDragOver($event, idx)"
-            @dragleave="handleDragLeave($event, idx)"
-            @drop.prevent="handleDrop($event, idx)"
-          >
-            <!-- Drop Indicator Bar -->
-            <div
-              v-if="dragOverIndex === idx"
-              class="absolute -left-1 inset-y-0 w-1.5 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.8)] z-40 animate-pulse pointer-events-none"
-            ></div>
-
-            <BookSpine
-              :book="book"
-              :left-neighbor="idx > 0 ? sortedBooks[idx - 1] : null"
-              :right-neighbor="idx < sortedBooks.length - 1 ? sortedBooks[idx + 1] : null"
-              @select="handleSelectBook"
-              @edit="handleEditBook"
-            />
-          </div>
-        </template>
-
-        <!-- Drop target at end of shelf books -->
+      <!-- 12-Slot Spatial Shelf Track (Allows placing books on Left, Center, Right, or anywhere) -->
+      <div class="flex items-end gap-1.5 sm:gap-2 z-10 w-full min-w-[720px] pb-0.5 justify-between">
         <div
-          class="relative h-44 w-12 flex items-end justify-center transition-all duration-200 ml-1"
-          :class="dragOverIndex === sortedBooks.length ? 'bg-amber-400/20 border-2 border-dashed border-amber-400/80 scale-[1.02]' : ''"
-          @dragover.prevent="handleDragOver($event, sortedBooks.length)"
-          @dragleave="handleDragLeave($event, sortedBooks.length)"
-          @drop.prevent="handleDrop($event, sortedBooks.length)"
+          v-for="slotIdx in totalSlots"
+          :key="slotIdx - 1"
+          class="relative flex-1 flex items-end justify-center min-h-[265px] transition-all duration-200 rounded-t"
+          :class="dragOverSlot === (slotIdx - 1) ? 'bg-amber-400/20 border-2 border-dashed border-amber-400 scale-[1.02] z-30' : ''"
+          @dragover.prevent="handleDragOver($event, slotIdx - 1)"
+          @dragleave="handleDragLeave($event, slotIdx - 1)"
+          @drop.prevent="handleDrop($event, slotIdx - 1)"
         >
-          <!-- Add Book Button -->
+          <!-- Book Spine at this specific spatial slot -->
+          <BookSpine
+            v-if="getBookAtSlot(slotIdx - 1)"
+            :book="getBookAtSlot(slotIdx - 1)!"
+            :left-neighbor="getNeighbor(slotIdx - 1, -1)"
+            :right-neighbor="getNeighbor(slotIdx - 1, 1)"
+            @select="handleSelectBook"
+            @edit="handleEditBook"
+          />
+
+          <!-- Empty Slot Placeholder / Drop Target / Quick Add -->
           <button
+            v-else
             type="button"
-            class="h-[210px] w-12 rounded-t-sm border border-dashed border-stone-600/30 hover:border-amber-400/80 hover:bg-amber-400/10 transition-all duration-200 flex flex-col items-center justify-center text-stone-500 hover:text-amber-300 group/add cursor-pointer flex-shrink-0"
-            title="Add new Journal to this shelf"
-            @click="handleAddBook"
+            class="h-44 w-full border border-dashed border-stone-800/30 hover:border-amber-400/60 hover:bg-amber-400/10 rounded-t flex flex-col items-center justify-center text-stone-600 hover:text-amber-300 opacity-0 hover:opacity-100 transition-opacity cursor-pointer group/empty"
+            :title="`Slot ${slotIdx} (${getSlotLabel(slotIdx - 1)}): Click to add a book or drop a journal here`"
+            @click="handleAddBookAtSlot(slotIdx - 1)"
           >
-            <span class="text-xl font-light group-hover/add:scale-125 transition-transform">+</span>
-            <span class="text-[9px] uppercase tracking-wider font-mono mt-1 opacity-0 group-hover/add:opacity-100 transition-opacity">New</span>
+            <span class="text-base font-light group-hover/empty:scale-125 transition-transform">+</span>
+            <span class="text-[8px] font-mono text-stone-400 mt-0.5">{{ getSlotLabel(slotIdx - 1) }}</span>
           </button>
         </div>
       </div>
@@ -123,32 +110,50 @@ const props = defineProps<{
 }>()
 
 const store = useLibraryStore()
-const dragOverIndex = ref<number | null>(null)
+const totalSlots = 12
+const dragOverSlot = ref<number | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
 
-const sortedBooks = computed(() => {
-  return [...books.value].sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
-})
-
-function handleDragOver(e: DragEvent, idx: number) {
-  e.dataTransfer!.dropEffect = 'move'
-  dragOverIndex.value = idx
+function getBookAtSlot(slotIdx: number): Book | undefined {
+  return books.value.find(b => (b.slotIndex ?? 0) === slotIdx)
 }
 
-function handleDragLeave(_e: DragEvent, idx: number) {
-  if (dragOverIndex.value === idx) {
-    dragOverIndex.value = null
+function getNeighbor(slotIdx: number, direction: -1 | 1): Book | null {
+  // Look for immediate adjacent neighbor first, or next occupied neighbor
+  const targetSlot = slotIdx + direction
+  const directNeighbor = getBookAtSlot(targetSlot)
+  if (directNeighbor) return directNeighbor
+
+  // Look for next closest neighbor within 2 slots
+  const secondarySlot = slotIdx + direction * 2
+  return getBookAtSlot(secondarySlot) || null
+}
+
+function getSlotLabel(slotIdx: number): string {
+  if (slotIdx <= 2) return `Left ${slotIdx + 1}`
+  if (slotIdx <= 7) return `Mid ${slotIdx + 1}`
+  return `Right ${slotIdx + 1}`
+}
+
+function handleDragOver(e: DragEvent, slotIdx: number) {
+  e.dataTransfer!.dropEffect = 'move'
+  dragOverSlot.value = slotIdx
+}
+
+function handleDragLeave(_e: DragEvent, slotIdx: number) {
+  if (dragOverSlot.value === slotIdx) {
+    dragOverSlot.value = null
   }
 }
 
-async function handleDrop(e: DragEvent, targetIdx: number) {
-  dragOverIndex.value = null
+async function handleDrop(e: DragEvent, targetSlotIdx: number) {
+  dragOverSlot.value = null
   if (!e.dataTransfer) return
 
   const bookId = e.dataTransfer.getData('text/plain')
   if (bookId) {
-    await store.moveBookToSlot(bookId, props.shelf.id, targetIdx)
+    await store.moveBookToSlot(bookId, props.shelf.id, targetSlotIdx)
   }
 }
 
@@ -160,10 +165,11 @@ function handleEditBook(book: Book) {
   store.openBookCustomizer(book)
 }
 
-function handleAddBook() {
+function handleAddBookAtSlot(slotIdx: number) {
   store.targetShelfIdForNewBook = props.shelf.id
   store.editingBook = null
   store.isBookCustomizerOpen = true
+  sessionStorage.setItem('target_new_book_slot', String(slotIdx))
 }
 
 function handleEditShelf() {
