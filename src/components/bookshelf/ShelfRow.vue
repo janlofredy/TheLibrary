@@ -183,6 +183,9 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     let x = book.positionX
     if (x === undefined || x < 0) {
       x = currentFlowX
+    } else {
+      // Enforce hard non-overlapping boundary: x must not intersect previous book's footprint
+      x = Math.max(currentFlowX, x)
     }
 
     calculatedItems.push({
@@ -193,7 +196,8 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       isFlat: isExplicitFlat,
     })
 
-    currentFlowX = Math.max(currentFlowX, x + bookWidth + 6)
+    // Advance floor flow coordinate to the hard right edge of this book
+    currentFlowX = x + bookWidth
   }
 
   const canvasW = shelfWidth.value
