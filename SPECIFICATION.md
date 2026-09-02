@@ -211,12 +211,13 @@ The bookshelf implements a deterministic first-principles physical mechanics eng
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### **1. Landing Page Architecture (Unauthenticated State)**
-- When an unauthenticated visitor opens the web app, they are greeted by an atmospheric **Skeuomorphic Landing Page**:
-  - **Visual Hero**: High-resolution dark walnut wooden shelf backdrop with ambient candlelight warmth and tactile 3D spine material previews.
-  - **Core Value Proposition**: Sovereign, private digital journaling with physical books, 2D physics leaning, and GitHub-backed version control.
-  - **Interactive Demos**: Live interactive spine customization preview and 2D physics demo.
-  - **Call to Action**: Prominent **"Sign in with GitHub"** and **"Sign in with Google"** buttons.
+#### **1. Landing Page Architecture: The Grand Library Aisle View (Unauthenticated State)**
+- When an unauthenticated visitor opens the web app, they are transported directly into the **middle of a majestic, atmospheric library aisle**:
+  - **3D Perspective Corridor**: Deep atmospheric perspective (`perspective: 1200px`) looking down a grand corridor flanked on both sides by towering mahogany/walnut bookshelves lined with leather-bound, gold-foiled, and ribbed-cloth volumes.
+  - **Ambient Sanctuary Lighting**: Warm amber pools of light along polished wooden floorboards, soft sconce glows, subtle dust mote ambient particles, and rich dark wood grain aesthetics.
+  - **Center-Aisle Archway & Plaque**: An ornate, engraved wooden and metallic nameplate suspended in the aisle: *"The Journal Library — Your Sovereign Sanctuary of Thought"*.
+  - **Interactive Tactile Volume Showcase**: Floating feature spotlights showcasing live interactive book spines (pulling out from the aisle shelves with 3D physics tilt and material customization previews).
+  - **Authentication Portals**: Prominent skeuomorphic **"Sign in with GitHub"** (Brass / Gold embossed) and **"Sign in with Google"** (Silver / Parchment) entry buttons positioned at the center of the aisle.
 
 #### **2. Mandatory Authentication Gate**
 - Creating a library and accessing the bookshelf workspace **strictly requires user authentication**.
@@ -525,13 +526,13 @@ jobs:
 - Add `.github/workflows/deploy.yml` for automated GitHub Pages hosting.
 - Responsive mobile touch tuning & PWA manifest support.
 
-### Phase 5: Landing Page, Authentication Gate & Empty Library Provisioning
-- **Landing Page (`LandingView.vue`)**:
-  - Atmospheric skeuomorphic hero section with rich wood textures, ambient lighting, and interactive 3D spine material previews.
-  - Clear value proposition showcasing physical tactile books, 2D physics leaning, and GitHub-backed sovereignty.
-  - **"Sign in with GitHub"** and **"Sign in with Google"** authentication triggers.
+### Phase 5: Landing Page (Grand Library Aisle View), Authentication Gate & Empty Library Provisioning
+- **Landing Page (`LandingView.vue`) — The Grand Library Aisle**:
+  - Immersive 3D perspective corridor looking down a majestic library aisle flanked by towering bookshelves and warm amber sconces.
+  - Interactive tactile volume showcase along the aisle walls with physics leaning and material previews.
+  - Engraved center-aisle archway plaque with **"Sign in with GitHub"** and **"Sign in with Google"** authentication portals.
 - **Authentication Gate**:
-  - Restrict library workspace and creation strictly to authenticated users; route unauthenticated visitors to Landing Page.
+  - Restrict library workspace and creation strictly to authenticated users; route unauthenticated visitors to the Grand Library Aisle Landing Page.
   - Preserve public read-only access for shared Gists and reader links.
 - **Pristine Empty Library Provisioning**:
   - When a new user authenticates for the first time, initialize an **Empty Library** with 1 clean shelf and **zero pre-populated books** ($0$ books).
