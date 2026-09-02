@@ -67,14 +67,14 @@ export interface NeighborInfo {
  * 1. Explicit Flat Mode: width = H, height = W, isFlat = true.
  * 2. Thick Volume Stability: Spine width > 45px always stands upright (0 deg).
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
- * 4. Available Neighbor Leaning: When only one side has a neighbor, always lean toward that neighbor.
+ * 4. End-of-Stack Leaning: A book hugging a neighbor on one side leans outward into open space at natural tilt (±8.5 deg), never falling flat.
  * 5. Shelf Wall Leaning:
  *    - Gap to left wall (8px < gap <= 35px): tilts into the left wall.
  *    - Gap to right wall (8px < gap <= 35px): tilts into the right wall.
  * 6. Dynamic Height-Aware Gap-Spanning: Taller/shorter books calculate exact reach angle so the top physically touches the neighbor.
  * 7. Height-Aware Mutual Lean / A-Frame: Two books leaning toward each other form an arch.
  * 8. Cascading Domino Support: Spans neighbor's shifted top surface.
- * 9. Fall-to-Flat Rule: Truly solitary volumes with zero neighbors within reach lie flat on the floor.
+ * 9. Fall-to-Flat Rule: Truly solitary volumes with zero support on either side lie flat on the floor.
  */
 export function getBookSizing(
   book: Book,
@@ -144,10 +144,10 @@ export function getBookSizing(
   } else if (book.layerMode === 'leaning-right') {
     leanDir = 'right'
   } else if (hasTightLeft && !hasTightRight) {
-    // Supported by left stack -> must lean RIGHT into open space
+    // Back supported by left stack -> must lean RIGHT into open space
     leanDir = 'right'
   } else if (hasTightRight && !hasTightLeft) {
-    // Supported by right stack -> must lean LEFT into open space
+    // Back supported by right stack -> must lean LEFT into open space
     leanDir = 'left'
   } else if (hasLeftNeighbor && !hasRightNeighbor) {
     // Only has left neighbor in reach -> lean LEFT into it
@@ -204,8 +204,28 @@ export function getBookSizing(
     }
   }
 
-  // 7. Unsupported Solitary Open Floor (no neighbor within H on either side) -> Fall Flat
+  // 7. Open Space Leaning / Solitary Fall Flat
   if (!neighbor || neighbor.distance >= H) {
+    const otherNeighbor = leanDir === 'right' ? neighbors?.left : neighbors?.right
+    const isSupportedFromBehind = Boolean(otherNeighbor && otherNeighbor.distance <= 16 && !otherNeighbor.isFlat)
+
+    if (isSupportedFromBehind) {
+      // Back is supported by adjacent stack -> lean into open space at natural tilt
+      const angleDeg = 8.5
+      const angleRad = (angleDeg * Math.PI) / 180
+      const sign = leanDir === 'right' ? 1 : -1
+      return {
+        width: W,
+        height: H,
+        rotationDeg: sign * angleDeg,
+        floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    // Truly solitary volume with zero support on either side -> Fall Flat
     return {
       width: H,
       height: W,
