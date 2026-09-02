@@ -48,13 +48,13 @@ export function calculateBookHeight(bookId: string): number {
 }
 
 /**
- * Computes full sizing, rotational lean, floor anti-clipping lift, and tilt eligibility for a book.
+ * Computes full sizing, realistic contact tilt angle, and floor anti-clipping lift.
  */
 export function getBookSizing(book: Book): BookSizing {
   const width = calculateSpineWidth(book.pageCount || 0)
   const height = calculateBookHeight(book.id)
 
-  // Only slim/medium books (<= 48px width) can physically tilt on the shelf
+  // In physics, only slim/medium books (<= 48px width) can physically lean against a sturdy neighbor
   const canTilt = width <= 48
 
   let rotationDeg = 0
@@ -62,7 +62,8 @@ export function getBookSizing(book: Book): BookSizing {
 
   if (canTilt && (book.layerMode === 'leaning-left' || book.layerMode === 'leaning-right')) {
     const seed = hashString(book.id + '-lean')
-    const baseAngle = 4.8 + ((seed % 15) / 10) // 4.8deg - 6.2deg natural lean
+    // Realistic contact angle (3.6deg - 4.8deg) so the top edge makes tangent contact with adjacent books without clipping
+    const baseAngle = 3.6 + ((seed % 12) / 10)
 
     if (book.layerMode === 'leaning-left') {
       rotationDeg = -baseAngle
@@ -71,8 +72,7 @@ export function getBookSizing(book: Book): BookSizing {
     }
 
     // Floor anti-clipping compensation:
-    // When rotated by theta, the bottom corner dips downward by width * sin(|theta|).
-    // Raising the element upward by floorLift keeps the lowest corner flush on the shelf floor!
+    // Lifting upward by width * sin(|theta|) keeps the bottom corner exactly flush with the shelf floor
     const rad = Math.abs(rotationDeg) * (Math.PI / 180)
     floorLift = Math.ceil(width * Math.sin(rad)) + 1
   }

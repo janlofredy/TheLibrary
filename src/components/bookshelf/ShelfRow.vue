@@ -1,29 +1,41 @@
 <template>
   <div class="relative w-full mb-8 sm:mb-12 flex flex-col group/shelf">
-    <!-- Shelf Top Ambient Occlusion Cavity (Clean Horizontal-Only Scrolling, Zero Vertical Scroll) -->
-    <div class="relative min-h-[300px] w-full flex items-end px-6 sm:px-12 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden">
+    <!-- Shelf Top Ambient Occlusion Cavity (Spatial Slots Track) -->
+    <div class="relative min-h-[300px] w-full flex items-end px-4 sm:px-8 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden">
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
       
-      <!-- Books Container (Bottom-Aligned Floor) -->
-      <div class="flex items-end gap-1.5 sm:gap-2 z-10 min-w-full pb-0.5">
-        <BookSpine
-          v-for="book in books"
-          :key="book.id"
-          :book="book"
-          @select="handleSelectBook"
-          @edit="handleEditBook"
-        />
-
-        <!-- Add Book Button on Shelf -->
-        <button
-          class="h-[210px] w-12 rounded-t-sm border-2 border-dashed border-stone-600/40 hover:border-amber-400/80 hover:bg-amber-400/10 transition-all duration-200 flex flex-col items-center justify-center text-stone-500 hover:text-amber-300 group/add cursor-pointer flex-shrink-0 ml-2"
-          title="Add new Journal to this shelf"
-          @click="handleAddBook"
+      <!-- Spatial Slot Track (12 Slots across shelf) -->
+      <div class="flex items-end gap-2 sm:gap-3 z-10 min-w-full pb-0.5 justify-between">
+        <div
+          v-for="slotIndex in totalSlots"
+          :key="slotIndex - 1"
+          class="relative flex items-end justify-center min-w-[42px] sm:min-w-[54px] min-h-[265px] transition-all duration-200 rounded-t"
+          :class="dragOverSlot === (slotIndex - 1) ? 'bg-amber-400/20 border-2 border-dashed border-amber-400/80 scale-[1.02]' : ''"
+          @dragover.prevent="handleDragOver(slotIndex - 1)"
+          @dragleave="handleDragLeave(slotIndex - 1)"
+          @drop="handleDrop(slotIndex - 1)"
         >
-          <span class="text-xl font-light group-hover/add:scale-125 transition-transform">+</span>
-          <span class="text-[9px] uppercase tracking-wider font-mono mt-1 opacity-0 group-hover/add:opacity-100 transition-opacity">New</span>
-        </button>
+          <!-- Book inside this slot if present -->
+          <BookSpine
+            v-if="getBookAtSlot(slotIndex - 1)"
+            :book="getBookAtSlot(slotIndex - 1)!"
+            @select="handleSelectBook"
+            @edit="handleEditBook"
+          />
+
+          <!-- Empty Slot Placeholder / Click to place book -->
+          <button
+            v-else
+            type="button"
+            class="h-44 w-10 sm:w-12 rounded-t-sm border border-dashed border-stone-700/30 hover:border-amber-400/70 hover:bg-amber-400/10 transition-all duration-200 flex flex-col items-center justify-center text-stone-600 hover:text-amber-300 opacity-0 hover:opacity-100 group/slot cursor-pointer"
+            :title="`Slot ${slotIndex}: Click to add or drop a book here`"
+            @click="handleAddBookAtSlot(slotIndex - 1)"
+          >
+            <span class="text-lg font-light group-hover/slot:scale-125 transition-transform">+</span>
+            <span class="text-[8px] font-mono uppercase tracking-tight text-stone-400 mt-0.5">Slot {{ slotIndex }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Floor Depth Shadow -->
@@ -60,14 +72,14 @@
       <!-- Right Shelf Actions Menu Trigger -->
       <div class="flex items-center gap-1.5 opacity-40 group-hover/shelf:opacity-100 transition-opacity">
         <button
-          class="p-1 rounded text-stone-400 hover:text-amber-200 hover:bg-black/30 text-xs transition"
+          class="p-1 rounded text-stone-400 hover:text-amber-200 hover:bg-black/30 text-xs transition cursor-pointer"
           title="Edit Shelf"
           @click="handleEditShelf"
         >
           ✎
         </button>
         <button
-          class="p-1 rounded text-stone-400 hover:text-rose-400 hover:bg-black/30 text-xs transition"
+          class="p-1 rounded text-stone-400 hover:text-rose-400 hover:bg-black/30 text-xs transition cursor-pointer"
           title="Delete Shelf"
           @click="handleDeleteShelf"
         >
@@ -79,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import type { Shelf, Book } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
 import BookSpine from './BookSpine.vue'
@@ -90,7 +102,41 @@ const props = defineProps<{
 
 const store = useLibraryStore()
 
+const totalSlots = 12 // 12 spatial spots along the shelf
+const dragOverSlot = ref<number | null>(null)
+
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
+
+function getBookAtSlot(slotIdx: number): Book | undefined {
+  // First look for exact slot match
+  const match = books.value.find(b => b.slotIndex === slotIdx)
+  if (match) return match
+
+  // Fallback for unindexed books
+  const unassigned = books.value.filter(b => b.slotIndex === undefined || b.slotIndex < 0)
+  return unassigned[slotIdx]
+}
+
+function handleDragOver(slotIdx: number) {
+  dragOverSlot.value = slotIdx
+}
+
+function handleDragLeave(slotIdx: number) {
+  if (dragOverSlot.value === slotIdx) {
+    dragOverSlot.value = null
+  }
+}
+
+async function handleDrop(slotIdx: number) {
+  dragOverSlot.value = null
+  const event = window.event as DragEvent
+  if (!event || !event.dataTransfer) return
+
+  const bookId = event.dataTransfer.getData('text/plain')
+  if (bookId) {
+    await store.moveBookToSlot(bookId, props.shelf.id, slotIdx)
+  }
+}
 
 function handleSelectBook(book: Book) {
   store.openBook(book.id)
@@ -100,8 +146,12 @@ function handleEditBook(book: Book) {
   store.openBookCustomizer(book)
 }
 
-function handleAddBook() {
-  store.openNewBookModal(props.shelf.id)
+function handleAddBookAtSlot(slotIdx: number) {
+  store.targetShelfIdForNewBook = props.shelf.id
+  store.editingBook = null
+  store.isBookCustomizerOpen = true
+  // Store target slot in customizer
+  sessionStorage.setItem('target_new_book_slot', String(slotIdx))
 }
 
 function handleEditShelf() {

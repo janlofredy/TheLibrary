@@ -200,6 +200,65 @@
               </div>
             </div>
 
+            <!-- Shelf Slot Position (Left, Center, Right, Slot 0-11) -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-mono uppercase text-stone-400">Shelf Placement (Slot {{ form.slotIndex + 1 }} of 12)</label>
+                <span class="text-xs font-mono text-amber-300 font-bold">
+                  {{ form.slotIndex <= 2 ? 'Left' : form.slotIndex <= 7 ? 'Middle' : 'Right' }}
+                </span>
+              </div>
+              <div class="flex gap-1.5 mb-2">
+                <button
+                  type="button"
+                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
+                  :class="form.slotIndex === 0 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  @click="form.slotIndex = 0"
+                >
+                  Far Left
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
+                  :class="form.slotIndex === 3 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  @click="form.slotIndex = 3"
+                >
+                  Mid-Left
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
+                  :class="form.slotIndex === 6 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  @click="form.slotIndex = 6"
+                >
+                  Center
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
+                  :class="form.slotIndex === 9 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  @click="form.slotIndex = 9"
+                >
+                  Mid-Right
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
+                  :class="form.slotIndex === 11 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  @click="form.slotIndex = 11"
+                >
+                  Far Right
+                </button>
+              </div>
+              <input
+                v-model.number="form.slotIndex"
+                type="range"
+                min="0"
+                max="11"
+                class="w-full accent-amber-500 cursor-pointer"
+              />
+            </div>
+
             <!-- Bookmark Ribbon Toggle -->
             <div class="flex items-center justify-between p-3 bg-black/30 rounded border border-stone-800">
               <div>
@@ -300,6 +359,7 @@ const form = ref<{
   ribbonColor: string
   hasRibbon: boolean
   layerMode: LayerMode
+  slotIndex: number
   pageCount: number
 }>({
   title: 'Untitled Journal',
@@ -311,6 +371,7 @@ const form = ref<{
   ribbonColor: '#d4af37',
   hasRibbon: true,
   layerMode: 'standing',
+  slotIndex: 0,
   pageCount: 14,
 })
 
@@ -328,10 +389,12 @@ watch(
         ribbonColor: book.ribbonColor,
         hasRibbon: book.hasRibbon,
         layerMode: book.layerMode,
+        slotIndex: book.slotIndex !== undefined ? book.slotIndex : 0,
         pageCount: book.pageCount,
       }
     } else {
       // Default for new book
+      const targetSlot = Number(sessionStorage.getItem('target_new_book_slot') || '0')
       form.value = {
         title: 'New Journal',
         subtitle: '',
@@ -342,6 +405,7 @@ watch(
         ribbonColor: '#d4af37',
         hasRibbon: true,
         layerMode: 'standing',
+        slotIndex: targetSlot,
         pageCount: 1,
       }
     }
@@ -360,7 +424,7 @@ const previewBook = computed<Book>(() => ({
   titleFont: form.value.titleFont,
   ribbonColor: form.value.ribbonColor,
   hasRibbon: form.value.hasRibbon,
-  slotIndex: 0,
+  slotIndex: form.value.slotIndex,
   layerMode: form.value.layerMode,
   stackOrder: 0,
   pageCount: form.value.pageCount,
@@ -386,6 +450,7 @@ async function handleSave() {
       ribbonColor: form.value.ribbonColor,
       hasRibbon: form.value.hasRibbon,
       layerMode: form.value.layerMode,
+      slotIndex: form.value.slotIndex,
       pageCount: form.value.pageCount,
     })
   } else if (store.targetShelfIdForNewBook) {
@@ -400,8 +465,10 @@ async function handleSave() {
       ribbonColor: form.value.ribbonColor,
       hasRibbon: form.value.hasRibbon,
       layerMode: form.value.layerMode,
+      slotIndex: form.value.slotIndex,
     })
   }
+  sessionStorage.removeItem('target_new_book_slot')
   store.closeBookCustomizer()
 }
 

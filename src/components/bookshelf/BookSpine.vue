@@ -1,7 +1,9 @@
 <template>
   <div
-    class="relative select-none cursor-pointer group transition-all duration-300 ease-out flex-shrink-0"
+    class="relative select-none cursor-grab active:cursor-grabbing group transition-all duration-300 ease-out flex-shrink-0"
     :style="containerWrapperStyle"
+    draggable="true"
+    @dragstart="handleDragStart"
     @click="handleClick"
     @contextmenu.prevent="handleRightClick"
   >
@@ -69,7 +71,7 @@
       </div>
     </div>
 
-    <!-- Hanging Bookmark Ribbon Tail (Clipped safely above shelf floor) -->
+    <!-- Hanging Bookmark Ribbon Tail -->
     <div
       v-if="book.hasRibbon"
       class="absolute left-1/2 -bottom-2 -translate-x-1/2 w-2.5 h-3 ribbon-tail shadow-md z-30 transition-transform duration-300 group-hover:translate-y-0.5"
@@ -106,12 +108,10 @@ const containerWrapperStyle = computed(() => {
 
   if (canTilt && (props.book.layerMode === 'leaning-left' || props.book.layerMode === 'leaning-right')) {
     if (props.book.layerMode === 'leaning-left') {
-      // Pivot around bottom right, lift by floorLift so the dipping corner doesn't pierce the floor
       transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
       transformOrigin = 'bottom right'
       zIndex = 20
     } else {
-      // Pivot around bottom left, lift by floorLift
       transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
       transformOrigin = 'bottom left'
       zIndex = 20
@@ -154,7 +154,6 @@ const titleFoilClass = computed(() => {
 })
 
 const titleWritingStyle = computed(() => {
-  // If spine is wide enough, allow normal text; otherwise vertical writing mode
   if (sizing.value.width >= 75) {
     return {
       writingMode: 'horizontal-tb' as const,
@@ -166,6 +165,13 @@ const titleWritingStyle = computed(() => {
     letterSpacing: '0.08em',
   }
 })
+
+function handleDragStart(e: DragEvent) {
+  if (e.dataTransfer) {
+    e.dataTransfer.setData('text/plain', props.book.id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+}
 
 function handleClick() {
   emit('select', props.book)
