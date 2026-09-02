@@ -1,39 +1,68 @@
 <template>
   <div class="relative w-full mb-8 sm:mb-12 flex flex-col group/shelf">
-    <!-- Shelf Top Ambient Occlusion Cavity (Spatial Slots Track) -->
-    <div class="relative min-h-[300px] w-full flex items-end px-4 sm:px-8 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden">
+    <!-- Shelf Top Ambient Occlusion Cavity (Snug & Realistic Bookshelf Layout) -->
+    <div class="relative min-h-[300px] w-full flex items-end px-6 sm:px-12 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden">
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
       
-      <!-- Spatial Slot Track (12 Slots across shelf) -->
-      <div class="flex items-end gap-2 sm:gap-3 z-10 min-w-full pb-0.5 justify-between">
-        <div
-          v-for="slotIndex in totalSlots"
-          :key="slotIndex - 1"
-          class="relative flex items-end justify-center min-w-[42px] sm:min-w-[54px] min-h-[265px] transition-all duration-200 rounded-t"
-          :class="dragOverSlot === (slotIndex - 1) ? 'bg-amber-400/20 border-2 border-dashed border-amber-400/80 scale-[1.02]' : ''"
-          @dragover.prevent="handleDragOver(slotIndex - 1)"
-          @dragleave="handleDragLeave(slotIndex - 1)"
-          @drop="handleDrop(slotIndex - 1)"
-        >
-          <!-- Book inside this slot if present -->
-          <BookSpine
-            v-if="getBookAtSlot(slotIndex - 1)"
-            :book="getBookAtSlot(slotIndex - 1)!"
-            @select="handleSelectBook"
-            @edit="handleEditBook"
-          />
-
-          <!-- Empty Slot Placeholder / Click to place book -->
-          <button
-            v-else
-            type="button"
-            class="h-44 w-10 sm:w-12 rounded-t-sm border border-dashed border-stone-700/30 hover:border-amber-400/70 hover:bg-amber-400/10 transition-all duration-200 flex flex-col items-center justify-center text-stone-600 hover:text-amber-300 opacity-0 hover:opacity-100 group/slot cursor-pointer"
-            :title="`Slot ${slotIndex}: Click to add or drop a book here`"
-            @click="handleAddBookAtSlot(slotIndex - 1)"
+      <!-- Bookshelf Floor Row (Snug Tight-Packed Spines with Natural Spacing) -->
+      <div class="flex items-end gap-1 sm:gap-1.5 z-10 min-w-full pb-0.5">
+        <!-- Render shelf items (Books + Natural Gap Spacers) -->
+        <template v-for="(item, idx) in shelfDisplayItems" :key="item.type === 'book' ? item.book.id : `spacer-${idx}`">
+          <!-- Book Spine -->
+          <div
+            v-if="item.type === 'book'"
+            class="relative flex items-end"
+            @dragover.prevent="handleDragOver(item.slotIndex)"
+            @dragleave="handleDragLeave(item.slotIndex)"
+            @drop="handleDrop(item.slotIndex)"
           >
-            <span class="text-lg font-light group-hover/slot:scale-125 transition-transform">+</span>
-            <span class="text-[8px] font-mono uppercase tracking-tight text-stone-400 mt-0.5">Slot {{ slotIndex }}</span>
+            <BookSpine
+              :book="item.book"
+              @select="handleSelectBook"
+              @edit="handleEditBook"
+            />
+          </div>
+
+          <!-- Natural Spacer Gap (When user left empty slots between books) -->
+          <div
+            v-else-if="item.type === 'spacer'"
+            class="relative h-44 flex items-end justify-center transition-all duration-200 rounded-t"
+            :style="{ width: `${item.width}px` }"
+            :class="dragOverSlot === item.slotIndex ? 'bg-amber-400/20 border-2 border-dashed border-amber-400/80 scale-[1.02]' : ''"
+            @dragover.prevent="handleDragOver(item.slotIndex)"
+            @dragleave="handleDragLeave(item.slotIndex)"
+            @drop="handleDrop(item.slotIndex)"
+          >
+            <button
+              type="button"
+              class="w-full h-full rounded-t-sm border border-dashed border-stone-700/20 hover:border-amber-400/60 hover:bg-amber-400/10 transition-all duration-200 flex flex-col items-center justify-center text-stone-600 hover:text-amber-300 opacity-0 hover:opacity-100 cursor-pointer"
+              title="Click or drop a book in this space"
+              @click="handleAddBookAtSlot(item.slotIndex)"
+            >
+              <span class="text-base font-light">+</span>
+              <span class="text-[8px] font-mono text-stone-400 mt-0.5">Space</span>
+            </button>
+          </div>
+        </template>
+
+        <!-- Drop target at end of shelf books -->
+        <div
+          class="relative h-44 w-12 flex items-end justify-center transition-all duration-200 ml-1"
+          :class="dragOverSlot === nextAvailableSlot ? 'bg-amber-400/20 border-2 border-dashed border-amber-400/80 scale-[1.02]' : ''"
+          @dragover.prevent="handleDragOver(nextAvailableSlot)"
+          @dragleave="handleDragLeave(nextAvailableSlot)"
+          @drop="handleDrop(nextAvailableSlot)"
+        >
+          <!-- Add Book Bookend Button -->
+          <button
+            type="button"
+            class="h-[210px] w-12 rounded-t-sm border border-dashed border-stone-600/30 hover:border-amber-400/80 hover:bg-amber-400/10 transition-all duration-200 flex flex-col items-center justify-center text-stone-500 hover:text-amber-300 group/add cursor-pointer flex-shrink-0"
+            title="Add new Journal to this shelf"
+            @click="handleAddBookAtSlot(nextAvailableSlot)"
+          >
+            <span class="text-xl font-light group-hover/add:scale-125 transition-transform">+</span>
+            <span class="text-[9px] uppercase tracking-wider font-mono mt-1 opacity-0 group-hover/add:opacity-100 transition-opacity">New</span>
           </button>
         </div>
       </div>
@@ -108,21 +137,53 @@ const props = defineProps<{
 }>()
 
 const store = useLibraryStore()
-
-const totalSlots = 12 // 12 spatial spots along the shelf
 const dragOverSlot = ref<number | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
 
-function getBookAtSlot(slotIdx: number): Book | undefined {
-  // First look for exact slot match
-  const match = books.value.find(b => b.slotIndex === slotIdx)
-  if (match) return match
+type ShelfDisplayItem = 
+  | { type: 'book'; book: Book; slotIndex: number }
+  | { type: 'spacer'; width: number; slotIndex: number }
 
-  // Fallback for unindexed books
-  const unassigned = books.value.filter(b => b.slotIndex === undefined || b.slotIndex < 0)
-  return unassigned[slotIdx]
-}
+const shelfDisplayItems = computed<ShelfDisplayItem[]>(() => {
+  const items: ShelfDisplayItem[] = []
+  if (books.value.length === 0) return items
+
+  // Sort books by slotIndex
+  const sorted = [...books.value].sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
+
+  let lastSlot = -1
+
+  for (const book of sorted) {
+    const currentSlot = book.slotIndex ?? (lastSlot + 1)
+    
+    // If there is an intentional gap between slots (e.g. slot 0 and slot 3)
+    if (lastSlot !== -1 && currentSlot > lastSlot + 1) {
+      const gapSlots = currentSlot - (lastSlot + 1)
+      items.push({
+        type: 'spacer',
+        width: Math.min(gapSlots * 24, 72), // subtle realistic space
+        slotIndex: lastSlot + 1,
+      })
+    }
+
+    items.push({
+      type: 'book',
+      book,
+      slotIndex: currentSlot,
+    })
+
+    lastSlot = currentSlot
+  }
+
+  return items
+})
+
+const nextAvailableSlot = computed(() => {
+  if (books.value.length === 0) return 0
+  const maxSlot = Math.max(...books.value.map(b => b.slotIndex ?? 0))
+  return maxSlot + 1
+})
 
 function handleDragOver(slotIdx: number) {
   dragOverSlot.value = slotIdx
@@ -157,7 +218,6 @@ function handleAddBookAtSlot(slotIdx: number) {
   store.targetShelfIdForNewBook = props.shelf.id
   store.editingBook = null
   store.isBookCustomizerOpen = true
-  // Store target slot in customizer
   sessionStorage.setItem('target_new_book_slot', String(slotIdx))
 }
 
