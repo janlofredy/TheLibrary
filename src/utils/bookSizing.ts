@@ -63,11 +63,7 @@ export interface NeighborInfo {
 }
 
 /**
- * Computes full sizing according to the formal physics specification:
- * 1. Supported Leaning: Books within physical support reach (gap <= 28px) of a neighbor lean at a natural, elegant angle (5.5 deg).
- * 2. Cascading Domino Stacks: Consecutive leaning books share parallel tilt angles for uniform, snug domino cascades.
- * 3. Wall Leaning: Books at the shelf edge (X <= 12px) lean against the vertical shelf wall (-5.5 deg).
- * 4. Unsupported Open Space: Books with no neighbor within support reach (gap > 28px) lie flat on the wooden floor.
+ * Computes individual book sizing given its calculated cluster rotation.
  */
 export function getBookSizing(
   book: Book,
@@ -104,52 +100,20 @@ export function getBookSizing(
     }
   }
 
-  // Determine Lean Direction
-  let leanDir: 'left' | 'right'
-  if (book.layerMode === 'leaning-left') {
-    leanDir = 'left'
-  } else if (book.layerMode === 'leaning-right') {
-    leanDir = 'right'
-  } else {
-    leanDir = getNaturalLeanDirection(book.id)
-  }
-
+  // If rotationDeg is explicitly resolved by the cluster solver
   const BASE_ANGLE = 5.5
   const angleRad = (BASE_ANGLE * Math.PI) / 180
   const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
-  if (leanDir === 'right') {
-    const neighbor = neighbors?.right
+  // Check left wall
+  const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 12)
+  const hasLeftNeighbor = Boolean(neighbors?.left && neighbors.left.distance <= 20)
+  const hasRightNeighbor = Boolean(neighbors?.right && neighbors.right.distance <= 20)
 
-    // If no neighbor on the right or distance is beyond physical support reach (> 28px) -> lies flat on floor
-    if (!neighbor || neighbor.distance > 28) {
-      return {
-        width: flatBookLength,
-        height: spineThickness,
-        rotationDeg: 0,
-        floorLift: 0,
-        canTilt: true,
-        isFlat: true,
-        topEdgeDetail: true,
-      }
-    }
-
-    // Supported by neighbor within 28px
-    return {
-      width: spineThickness,
-      height: fullBookHeight,
-      rotationDeg: BASE_ANGLE,
-      floorLift,
-      canTilt: true,
-      isFlat: false,
-      topEdgeDetail: false,
-    }
-  } else {
-    // Leaning Left
-    const neighbor = neighbors?.left
-    const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 12)
-
-    if (isAgainstLeftWall) {
+  // Sandwiched between two books -> stands upright
+  if ((isAgainstLeftWall || hasLeftNeighbor) && hasRightNeighbor) {
+    // If neighbor to the right is also leaning left, lean left together
+    if (neighbors?.right?.rotationDeg && neighbors.right.rotationDeg < 0) {
       return {
         width: spineThickness,
         height: fullBookHeight,
@@ -160,21 +124,31 @@ export function getBookSizing(
         topEdgeDetail: false,
       }
     }
-
-    // If no neighbor on the left or distance is beyond physical support reach (> 28px) -> lies flat on floor
-    if (!neighbor || neighbor.distance > 28) {
+    // If neighbor to the left is leaning right, lean right together
+    if (neighbors?.left?.rotationDeg && neighbors.left.rotationDeg > 0) {
       return {
-        width: flatBookLength,
-        height: spineThickness,
-        rotationDeg: 0,
-        floorLift: 0,
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: BASE_ANGLE,
+        floorLift,
         canTilt: true,
-        isFlat: true,
-        topEdgeDetail: true,
+        isFlat: false,
+        topEdgeDetail: false,
       }
     }
+    return {
+      width: spineThickness,
+      height: fullBookHeight,
+      rotationDeg: 0,
+      floorLift: 0,
+      canTilt: true,
+      isFlat: false,
+      topEdgeDetail: false,
+    }
+  }
 
-    // Supported by neighbor on left within 28px
+  // Supported on left (wall or book)
+  if (isAgainstLeftWall || hasLeftNeighbor) {
     return {
       width: spineThickness,
       height: fullBookHeight,
@@ -184,5 +158,29 @@ export function getBookSizing(
       isFlat: false,
       topEdgeDetail: false,
     }
+  }
+
+  // Supported on right
+  if (hasRightNeighbor) {
+    return {
+      width: spineThickness,
+      height: fullBookHeight,
+      rotationDeg: BASE_ANGLE,
+      floorLift,
+      canTilt: true,
+      isFlat: false,
+      topEdgeDetail: false,
+    }
+  }
+
+  // Unsupported isolated volume -> falls flat
+  return {
+    width: flatBookLength,
+    height: spineThickness,
+    rotationDeg: 0,
+    floorLift: 0,
+    canTilt: true,
+    isFlat: true,
+    topEdgeDetail: true,
   }
 }
