@@ -67,14 +67,14 @@ export interface NeighborInfo {
  * 1. Explicit Flat Mode: width = H, height = W, isFlat = true.
  * 2. Thick Volume Stability: Spine width > 45px always stands upright (0 deg).
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
- * 4. End-of-Stack Leaning: A book at the end of a packed stack must lean OUTWARD into the open space.
+ * 4. Available Neighbor Leaning: When only one side has a neighbor, always lean toward that neighbor.
  * 5. Shelf Wall Leaning:
  *    - Gap to left wall (8px < gap <= 35px): tilts into the left wall.
  *    - Gap to right wall (8px < gap <= 35px): tilts into the right wall.
  * 6. Dynamic Height-Aware Gap-Spanning: Taller/shorter books calculate exact reach angle so the top physically touches the neighbor.
  * 7. Height-Aware Mutual Lean / A-Frame: Two books leaning toward each other form an arch.
  * 8. Cascading Domino Support: Spans neighbor's shifted top surface.
- * 9. Fall-to-Flat Rule: Unsupported solitary volumes on open floor lie flat on the shelf floor, falling inward toward open space.
+ * 9. Fall-to-Flat Rule: Truly solitary volumes with zero neighbors within reach lie flat on the floor.
  */
 export function getBookSizing(
   book: Book,
@@ -134,8 +134,8 @@ export function getBookSizing(
     : Infinity
   const isGapRightWall = Boolean(distToRightWall > 8 && distToRightWall <= 35)
 
-  const hasLeftSupport = isGapLeftWall || Boolean(neighbors?.left && neighbors.left.distance < H)
-  const hasRightSupport = isGapRightWall || Boolean(neighbors?.right && neighbors.right.distance < H)
+  const hasLeftNeighbor = Boolean(neighbors?.left && neighbors.left.distance < H)
+  const hasRightNeighbor = Boolean(neighbors?.right && neighbors.right.distance < H)
 
   // 4. Physical Lean Direction Determination:
   let leanDir: 'left' | 'right'
@@ -144,20 +144,27 @@ export function getBookSizing(
   } else if (book.layerMode === 'leaning-right') {
     leanDir = 'right'
   } else if (hasTightLeft && !hasTightRight) {
-    // Back supported by left stack -> must lean RIGHT into open space
+    // Supported by left stack -> must lean RIGHT into open space
     leanDir = 'right'
   } else if (hasTightRight && !hasTightLeft) {
-    // Back supported by right stack -> must lean LEFT into open space
+    // Supported by right stack -> must lean LEFT into open space
     leanDir = 'left'
+  } else if (hasLeftNeighbor && !hasRightNeighbor) {
+    // Only has left neighbor in reach -> lean LEFT into it
+    leanDir = 'left'
+  } else if (hasRightNeighbor && !hasLeftNeighbor) {
+    // Only has right neighbor in reach -> lean RIGHT into it
+    leanDir = 'right'
+  } else if (hasLeftNeighbor && hasRightNeighbor) {
+    // Has neighbors on both sides -> lean toward closer neighbor
+    leanDir = neighbors!.left!.distance <= neighbors!.right!.distance ? 'left' : 'right'
+  } else if (isGapLeftWall) {
+    leanDir = 'left'
+  } else if (isGapRightWall) {
+    leanDir = 'right'
   } else if (distToRightWall < 60 && posX > 60) {
-    // Near right wall with open space on left -> must lean/fall LEFT into the room
     leanDir = 'left'
   } else if (posX < 60 && distToRightWall > 60) {
-    // Near left wall with open space on right -> must lean/fall RIGHT into the room
-    leanDir = 'right'
-  } else if (hasLeftSupport && !hasRightSupport) {
-    leanDir = 'left'
-  } else if (hasRightSupport && !hasLeftSupport) {
     leanDir = 'right'
   } else {
     leanDir = getNaturalLeanDirection(book.id)
@@ -197,7 +204,7 @@ export function getBookSizing(
     }
   }
 
-  // 7. Unsupported Solitary Open Floor (no neighbor within H) -> Fall Flat
+  // 7. Unsupported Solitary Open Floor (no neighbor within H on either side) -> Fall Flat
   if (!neighbor || neighbor.distance >= H) {
     return {
       width: H,
