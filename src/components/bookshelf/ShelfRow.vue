@@ -12,50 +12,16 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
 
-      <!-- Live Ghost Drag Preview (Full-Width Ghost Book Silhouette with Glowing Box) -->
-      <div
-        v-if="dragIndicatorX !== null && store.activeDraggingBook"
-        class="absolute bottom-0 z-40 pointer-events-none transition-all duration-75 scale-[1.02]"
-        :style="{ left: `${dragIndicatorX}px` }"
-      >
-        <!-- Full-Width Glowing Target Box Preview -->
-        <div
-          class="relative rounded border-2 border-dashed border-amber-300 bg-amber-400/25 shadow-[0_0_16px_rgba(251,191,36,0.6)] backdrop-blur-[1px] flex flex-col items-center justify-between p-2"
-          :style="{ width: `${dragGhostDimensions.width}px`, height: `${dragGhostDimensions.height}px` }"
-        >
-          <!-- Top Ornament -->
-          <div class="text-[9px] font-mono uppercase text-amber-200 tracking-wider font-bold">
-            Drop
-          </div>
-
-          <!-- Vertical / Horizontal Title -->
-          <div class="flex-1 flex items-center justify-center overflow-hidden my-1">
-            <span
-              class="font-serif-book font-bold text-[11px] text-amber-100 uppercase tracking-widest leading-none truncate"
-              :class="dragGhostDimensions.width < 60 ? 'rotate-90' : ''"
-            >
-              {{ store.activeDraggingBook.title }}
-            </span>
-          </div>
-
-          <!-- Bottom Dimensions Badge -->
-          <div class="text-[8px] font-mono text-amber-300/80">
-            {{ dragGhostDimensions.width }}px
-          </div>
-        </div>
-      </div>
-
       <!-- Continuous Shelf Floor Canvas -->
       <div
         class="relative min-h-[265px] flex items-end z-10 pb-0.5"
         :style="{ width: `${shelfContentWidth}px`, minWidth: '100%' }"
       >
-        <!-- Books Rendered at their Computed Coordinate Positions -->
+        <!-- Books Rendered at their Live Layout & Projected Ghost Positions -->
         <div
           v-for="item in positionedBooks"
           :key="item.book.id"
-          class="absolute bottom-0 flex items-end transition-all duration-300"
-          :class="store.activeDraggingBook?.id === item.book.id ? 'opacity-25 scale-95' : ''"
+          class="absolute bottom-0 flex items-end transition-all duration-200"
           :style="{ left: `${item.x}px` }"
           @click.stop
         >
@@ -63,6 +29,7 @@
             :book="item.book"
             :left-neighbor="item.leftNeighbor"
             :right-neighbor="item.rightNeighbor"
+            :is-ghost="item.isGhost"
             @select="handleSelectBook"
             @edit="handleEditBook"
           />
@@ -162,33 +129,42 @@ const dragIndicatorX = ref<number | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
 
-const dragGhostDimensions = computed(() => {
-  if (!store.activeDraggingBook) return { width: 34, height: 220 }
-  const isFlat = store.activeDraggingBook.layerMode === 'horizontal-stack'
-  const spineW = calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
-  const bookH = calculateBookHeight(store.activeDraggingBook.id)
-  const flatLength = Math.min(210, Math.max(170, Math.round(bookH * 0.82)))
-
-  if (isFlat) {
-    return { width: flatLength, height: spineW }
+// Active Shelf Books incorporating Live Ghost Projection during drag
+const activeShelfBooks = computed<Book[]>(() => {
+  if (!store.activeDraggingBook || dragIndicatorX.value === null) {
+    return books.value
   }
-  return { width: spineW, height: bookH }
+
+  // Filter out dragging book from original position
+  const otherBooks = books.value.filter(b => b.id !== store.activeDraggingBook!.id)
+  
+  // Clone dragging book at projected coordinate on this shelf
+  const projectedGhost: Book = {
+    ...store.activeDraggingBook,
+    shelfId: props.shelf.id,
+    positionX: dragIndicatorX.value,
+  }
+
+  return [...otherBooks, projectedGhost]
 })
 
 interface PositionedBook {
   book: Book
   x: number
   width: number
+  height: number
   isFlat: boolean
+  isGhost: boolean
   leftNeighbor: NeighborInfo | null
   rightNeighbor: NeighborInfo | null
 }
 
 const positionedBooks = computed<PositionedBook[]>(() => {
-  if (books.value.length === 0) return []
+  const currentBooks = activeShelfBooks.value
+  if (currentBooks.length === 0) return []
 
-  // Assign computed x coordinates based on positionX or ordered spine widths
-  const sorted = [...books.value].sort((a, b) => {
+  // Sort by positionX or slotIndex
+  const sorted = [...currentBooks].sort((a, b) => {
     if (a.positionX !== undefined && b.positionX !== undefined) {
       return a.positionX - b.positionX
     }
@@ -197,7 +173,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
 
   // Calculate base coordinates and dimensions respecting full book footprints
   let currentFlowX = 24
-  const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean }[] = []
+  const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean; isGhost: boolean }[] = []
 
   for (const book of sorted) {
     const isExplicitFlat = book.layerMode === 'horizontal-stack'
@@ -212,12 +188,15 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       x = currentFlowX
     }
 
+    const isGhost = Boolean(store.activeDraggingBook && book.id === store.activeDraggingBook.id)
+
     calculatedItems.push({
       book,
       x,
       width: bookWidth,
       height: bookHeight,
       isFlat: isExplicitFlat,
+      isGhost,
     })
 
     // Advance floor flow coordinate with snug 6px separation
@@ -261,7 +240,9 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       book: current.book,
       x: current.x,
       width: current.width,
+      height: current.height,
       isFlat: current.isFlat,
+      isGhost: current.isGhost,
       leftNeighbor,
       rightNeighbor,
     })
@@ -285,9 +266,10 @@ function handleTrackDragOver(e: DragEvent) {
   e.dataTransfer!.dropEffect = 'move'
   const rect = shelfTrack.value.getBoundingClientRect()
   const scrollLeft = shelfTrack.value.scrollLeft
-  const rawX = Math.max(0, e.clientX - rect.left + scrollLeft - Math.round(dragGhostDimensions.value.width / 2))
-  
-  const ghostW = dragGhostDimensions.value.width
+  const draggingW = store.activeDraggingBook 
+    ? calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
+    : 34
+  const rawX = Math.max(0, e.clientX - rect.left + scrollLeft - Math.round(draggingW / 2))
 
   // Magnetic Snapping: when within 18px of an adjacent book, snap cleanly with 2px gap
   let targetX = rawX
@@ -300,8 +282,8 @@ function handleTrackDragOver(e: DragEvent) {
       break
     }
     // Snap to left side of item
-    if (Math.abs(rawX - (item.x - ghostW)) < 18) {
-      targetX = Math.max(0, item.x - ghostW - 2)
+    if (Math.abs(rawX - (item.x - draggingW)) < 18) {
+      targetX = Math.max(0, item.x - draggingW - 2)
       break
     }
   }
