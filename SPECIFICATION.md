@@ -506,18 +506,6 @@ jobs:
   - 1:1 live drag ghost preview overlay.
 - Setup **Dexie.js / IndexedDB** local database for 0ms instant local reads/writes.
 
-### Phase 1.5: Landing Page, Authentication Gate & Empty Library Provisioning (Next Phase)
-- **Landing Page (`LandingView.vue`)**:
-  - Atmospheric skeuomorphic hero section with rich wood textures, ambient lighting, and interactive 3D spine material previews.
-  - Clear value proposition showcasing physical tactile books, 2D physics leaning, and GitHub-backed sovereignty.
-  - **"Sign in with GitHub"** and **"Sign in with Google"** authentication triggers.
-- **Authentication Gate**:
-  - Restrict library access to authenticated users; route unauthenticated visitors to Landing Page.
-  - Preserve public read-only access for shared Gists and reader links.
-- **Pristine Empty Library Provisioning**:
-  - When a new user authenticates for the first time, initialize an **Empty Library** with 1 clean shelf and **zero pre-populated books** ($0$ books).
-  - Design an elegant, tactile **"Add Your First Journal"** prompt centered on the empty shelf ledge.
-
 ### Phase 2: Writing Desk & Page Editor
 - Implement the **3D Book-Pull Animation** (smooth transition from shelf to writing desk).
 - Integrate **Tiptap Rich-Text Editor** with paper styles (lined, dotted, parchment).
@@ -536,3 +524,15 @@ jobs:
 - Granular sharing interface (Public Gist export, repo collaborator access, read-only reader link).
 - Add `.github/workflows/deploy.yml` for automated GitHub Pages hosting.
 - Responsive mobile touch tuning & PWA manifest support.
+
+### Phase 5: Landing Page, Authentication Gate & Empty Library Provisioning
+- **Landing Page (`LandingView.vue`)**:
+  - Atmospheric skeuomorphic hero section with rich wood textures, ambient lighting, and interactive 3D spine material previews.
+  - Clear value proposition showcasing physical tactile books, 2D physics leaning, and GitHub-backed sovereignty.
+  - **"Sign in with GitHub"** and **"Sign in with Google"** authentication triggers.
+- **Authentication Gate**:
+  - Restrict library workspace and creation strictly to authenticated users; route unauthenticated visitors to Landing Page.
+  - Preserve public read-only access for shared Gists and reader links.
+- **Pristine Empty Library Provisioning**:
+  - When a new user authenticates for the first time, initialize an **Empty Library** with 1 clean shelf and **zero pre-populated books** ($0$ books).
+  - Design an elegant, tactile **"Add Your First Journal"** prompt centered on the empty shelf ledge.
