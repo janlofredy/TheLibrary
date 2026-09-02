@@ -62,6 +62,31 @@ export interface NeighborInfo {
 }
 
 /**
+ * Calculates the exact trigonometric lean angle required for a book of height H and width W
+ * to rotate around its bottom corner and span the exact gap to hit its neighbor.
+ * Solves: H * sin(theta) + W * (cos(theta) - 1) = gap
+ */
+export function computePreciseLeanAngle(gap: number, H: number, W: number): number {
+  if (gap < 2) return 0
+  
+  // Initial estimate
+  let sinTheta = Math.min(0.96, gap / H)
+  let theta = Math.asin(sinTheta)
+  
+  // Newton-Raphson refinement for width & cosine offset compensation
+  for (let step = 0; step < 2; step++) {
+    const reach = H * Math.sin(theta) + W * (Math.cos(theta) - 1)
+    const error = gap - reach
+    const dReach = H * Math.cos(theta) - W * Math.sin(theta)
+    if (Math.abs(dReach) > 5) {
+      theta = Math.max(0, Math.min(1.35, theta + error / dReach))
+    }
+  }
+  
+  return Number(((theta * 180) / Math.PI).toFixed(1))
+}
+
+/**
  * Computes full sizing according to the formal physics specification:
  * 1. Calculates exact lean angle spanning the gap distance to hit the adjacent book (ZERO CLIPPING for any gap < flatBookLength).
  * 2. If a neighbor is on the lean side at ANY distance < flatBookLength, the book leans against it rather than falling through it.
@@ -152,9 +177,8 @@ export function getBookSizing(
       const flatH = Math.max(28, neighbor.height)
       const gap = Math.max(0, neighbor.distance)
       const effectiveHeight = Math.max(60, fullBookHeight - flatH)
-      const sinTheta = Math.min(0.85, Math.max(0.08, gap / effectiveHeight))
-      const angleRad = Math.asin(sinTheta)
-      const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+      const angleDeg = computePreciseLeanAngle(gap, effectiveHeight, spineThickness)
+      const angleRad = (angleDeg * Math.PI) / 180
       const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
       return {
@@ -183,10 +207,9 @@ export function getBookSizing(
       }
     }
 
-    // Leans all the way across the gap to hit the standing neighbor!
-    const sinTheta = Math.min(0.92, gap / fullBookHeight)
-    const angleRad = Math.asin(sinTheta)
-    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+    // Leans all the way across the gap to hit the standing neighbor with precise trigonometry!
+    const angleDeg = computePreciseLeanAngle(gap, fullBookHeight, spineThickness)
+    const angleRad = (angleDeg * Math.PI) / 180
     const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
     return {
@@ -238,9 +261,8 @@ export function getBookSizing(
       const flatH = Math.max(28, neighbor.height)
       const gap = Math.max(0, neighbor.distance)
       const effectiveHeight = Math.max(60, fullBookHeight - flatH)
-      const sinTheta = Math.min(0.85, Math.max(0.08, gap / effectiveHeight))
-      const angleRad = Math.asin(sinTheta)
-      const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+      const angleDeg = computePreciseLeanAngle(gap, effectiveHeight, spineThickness)
+      const angleRad = (angleDeg * Math.PI) / 180
       const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
       return {
@@ -270,9 +292,8 @@ export function getBookSizing(
     }
 
     // Leans all the way across the gap to hit the standing neighbor!
-    const sinTheta = Math.min(0.92, gap / fullBookHeight)
-    const angleRad = Math.asin(sinTheta)
-    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+    const angleDeg = computePreciseLeanAngle(gap, fullBookHeight, spineThickness)
+    const angleRad = (angleDeg * Math.PI) / 180
     const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
     return {
