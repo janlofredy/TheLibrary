@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { db, seedInitialData } from '@/db'
 import type { Library, Shelf, Book, Page, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode, PaperStyle } from '@/types/journal'
+import { syncEngine } from '@/services/gitSyncEngine'
+import { getStoredSession } from '@/services/githubAuth'
 
 export const useLibraryStore = defineStore('library', () => {
   const isLoading = ref(true)
@@ -19,6 +21,7 @@ export const useLibraryStore = defineStore('library', () => {
   const isBookCustomizerOpen = ref(false)
   const isShelfModalOpen = ref(false)
   const isLibraryModalOpen = ref(false)
+  const isAuthModalOpen = ref(false)
   
   const editingBook = ref<Book | null>(null)
   const targetShelfIdForNewBook = ref<string | null>(null)
@@ -72,6 +75,12 @@ export const useLibraryStore = defineStore('library', () => {
       if (libraries.value.length > 0 && !currentLibraryId.value) {
         currentLibraryId.value = libraries.value[0].id
       }
+
+      // If user is authenticated, attempt background pull
+      const session = getStoredSession()
+      if (session && navigator.onLine) {
+        syncEngine.pullFromGitHub().then(() => loadAll())
+      }
     } finally {
       isLoading.value = false
     }
@@ -104,6 +113,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     // Create a starter shelf
     await createShelf(newLib.id, 'My First Shelf', 'brass')
+    syncEngine.scheduleSync()
     return newLib
   }
 
@@ -114,6 +124,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       libraries.value[index] = { ...libraries.value[index], ...updates, updatedAt: now }
     }
+    syncEngine.scheduleSync()
   }
 
   async function deleteLibrary(id: string) {
@@ -129,6 +140,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (currentLibraryId.value === id && libraries.value.length > 0) {
       currentLibraryId.value = libraries.value[0].id
     }
+    syncEngine.scheduleSync()
   }
 
   async function createShelf(libraryId: string, name: string, nameplateStyle: NameplateStyle = 'brass') {
@@ -146,6 +158,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     await db.shelves.add(newShelf)
     shelves.value.push(newShelf)
+    syncEngine.scheduleSync()
     return newShelf
   }
 
@@ -156,6 +169,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       shelves.value[index] = { ...shelves.value[index], ...updates, updatedAt: now }
     }
+    syncEngine.scheduleSync()
   }
 
   async function deleteShelf(id: string) {
@@ -166,6 +180,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     await db.shelves.delete(id)
     shelves.value = shelves.value.filter(s => s.id !== id)
+    syncEngine.scheduleSync()
   }
 
   async function createBook(bookData: {
@@ -223,6 +238,7 @@ export const useLibraryStore = defineStore('library', () => {
     }
     await db.pages.add(firstPage)
 
+    syncEngine.scheduleSync()
     return newBook
   }
 
@@ -233,6 +249,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       books.value[index] = { ...books.value[index], ...updates, updatedAt: now }
     }
+    syncEngine.scheduleSync()
   }
 
   async function deleteBook(id: string) {
@@ -242,6 +259,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (activeOpenedBookId.value === id) {
       closeBook()
     }
+    syncEngine.scheduleSync()
   }
 
   // Desk and Page Actions
@@ -310,6 +328,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     // Update book's dynamic page count
     await updateBook(activeOpenedBookId.value, { pageCount: activePages.value.length })
+    syncEngine.scheduleSync()
     return newPage
   }
 
@@ -320,6 +339,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       activePages.value[index] = { ...activePages.value[index], ...updates, updatedAt: now }
     }
+    syncEngine.scheduleSync()
   }
 
   async function deletePage(id: string) {
@@ -351,6 +371,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (activeOpenedBookId.value) {
       await updateBook(activeOpenedBookId.value, { pageCount: activePages.value.length })
     }
+    syncEngine.scheduleSync()
   }
 
   function setPageIndex(index: number) {
@@ -396,6 +417,14 @@ export const useLibraryStore = defineStore('library', () => {
     isLibraryModalOpen.value = false
   }
 
+  function openAuthModal() {
+    isAuthModalOpen.value = true
+  }
+
+  function closeAuthModal() {
+    isAuthModalOpen.value = false
+  }
+
   return {
     isLoading,
     libraries,
@@ -413,11 +442,13 @@ export const useLibraryStore = defineStore('library', () => {
     isBookCustomizerOpen,
     isShelfModalOpen,
     isLibraryModalOpen,
+    isAuthModalOpen,
     editingBook,
     targetShelfIdForNewBook,
     editingShelf,
     getBooksForShelf,
     init,
+    loadAll,
     setLibrary,
     createLibrary,
     updateLibrary,
@@ -441,5 +472,7 @@ export const useLibraryStore = defineStore('library', () => {
     closeShelfModal,
     openLibraryModal,
     closeLibraryModal,
+    openAuthModal,
+    closeAuthModal,
   }
 })

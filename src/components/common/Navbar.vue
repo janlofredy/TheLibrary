@@ -15,20 +15,26 @@
         @click="store.openLibraryModal()"
       >
         <div class="w-2 h-2 rounded-full bg-amber-400"></div>
-        <span class="font-serif font-medium text-amber-200/90 truncate max-w-[140px] sm:max-w-[200px]">
+        <span class="font-serif font-medium text-amber-200/90 truncate max-w-[120px] sm:max-w-[180px]">
           {{ store.currentLibrary?.name || 'Grand Archive' }}
         </span>
         <span class="text-stone-500 text-[10px]">▼</span>
       </button>
     </div>
 
-    <!-- Center Stats (Total Shelves, Books, Pages) -->
-    <div class="hidden md:flex items-center gap-4 text-xs font-mono text-stone-400 bg-black/30 px-4 py-1.5 rounded-full border border-stone-800">
-      <span><strong class="text-amber-300 font-bold">{{ store.libraryStats.shelvesCount }}</strong> Shelves</span>
-      <span>•</span>
-      <span><strong class="text-amber-300 font-bold">{{ store.libraryStats.booksCount }}</strong> Books</span>
-      <span>•</span>
-      <span><strong class="text-amber-300 font-bold">{{ store.libraryStats.pagesCount }}</strong> Pages</span>
+    <!-- Center Stats & Cloud Sync Indicator -->
+    <div class="flex items-center gap-3">
+      <!-- Quick Stats -->
+      <div class="hidden lg:flex items-center gap-4 text-xs font-mono text-stone-400 bg-black/30 px-4 py-1.5 rounded-full border border-stone-800">
+        <span><strong class="text-amber-300 font-bold">{{ store.libraryStats.shelvesCount }}</strong> Shelves</span>
+        <span>•</span>
+        <span><strong class="text-amber-300 font-bold">{{ store.libraryStats.booksCount }}</strong> Books</span>
+        <span>•</span>
+        <span><strong class="text-amber-300 font-bold">{{ store.libraryStats.pagesCount }}</strong> Pages</span>
+      </div>
+
+      <!-- Cloud Sync Status Pill -->
+      <SyncStatusPill />
     </div>
 
     <!-- Right Actions -->
@@ -47,12 +53,13 @@
         <span>+</span> <span>New Book</span>
       </button>
 
+      <!-- Account / Cloud Settings Button -->
       <button
         class="p-2 rounded hover:bg-white/5 text-stone-400 hover:text-stone-200 text-sm transition"
-        title="Library Settings"
-        @click="store.openLibraryModal()"
+        title="GitHub Database & Sync Settings"
+        @click="store.openAuthModal()"
       >
-        ⚙
+        🐙
       </button>
     </div>
   </header>
@@ -60,6 +67,7 @@
 
 <script setup lang="ts">
 import { useLibraryStore } from '@/stores/libraryStore'
+import SyncStatusPill from './SyncStatusPill.vue'
 
 const store = useLibraryStore()
 

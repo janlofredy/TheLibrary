@@ -29,6 +29,7 @@
       <BookCustomizerModal />
       <ShelfModal />
       <LibraryModal />
+      <AuthModal />
     </template>
   </div>
 </template>
@@ -42,6 +43,7 @@ import WritingDesk from '@/components/desk/WritingDesk.vue'
 import BookCustomizerModal from '@/components/customizer/BookCustomizerModal.vue'
 import ShelfModal from '@/components/customizer/ShelfModal.vue'
 import LibraryModal from '@/components/customizer/LibraryModal.vue'
+import AuthModal from '@/components/auth/AuthModal.vue'
 
 const store = useLibraryStore()
 
