@@ -74,7 +74,7 @@ export interface NeighborInfo {
  * 6. Dynamic Height-Aware Gap-Spanning: Taller/shorter books calculate exact reach angle so the top physically touches the neighbor.
  * 7. Height-Aware Mutual Lean / A-Frame: Two books leaning toward each other form an arch.
  * 8. Cascading Domino Support: Spans neighbor's shifted top surface.
- * 9. Fall-to-Flat Rule: Unsupported solitary volumes on open floor lie flat on the shelf floor.
+ * 9. Fall-to-Flat Rule: Unsupported solitary volumes on open floor lie flat on the shelf floor, falling inward toward open space.
  */
 export function getBookSizing(
   book: Book,
@@ -149,6 +149,12 @@ export function getBookSizing(
   } else if (hasTightRight && !hasTightLeft) {
     // Back supported by right stack -> must lean LEFT into open space
     leanDir = 'left'
+  } else if (distToRightWall < 60 && posX > 60) {
+    // Near right wall with open space on left -> must lean/fall LEFT into the room
+    leanDir = 'left'
+  } else if (posX < 60 && distToRightWall > 60) {
+    // Near left wall with open space on right -> must lean/fall RIGHT into the room
+    leanDir = 'right'
   } else if (hasLeftSupport && !hasRightSupport) {
     leanDir = 'left'
   } else if (hasRightSupport && !hasLeftSupport) {

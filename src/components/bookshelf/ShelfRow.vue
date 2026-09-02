@@ -265,6 +265,17 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     }
   }
 
+  // Ensure flat books stay completely inside the shelf bounds [0, canvasW]
+  for (let i = 0; i < result.length; i++) {
+    const s = sizings[i]
+    if (s.isFlat) {
+      const flatW = s.width
+      if (result[i].x + flatW > canvasW) {
+        result[i].x = Math.max(0, canvasW - flatW)
+      }
+    }
+  }
+
   return result
 })
 
