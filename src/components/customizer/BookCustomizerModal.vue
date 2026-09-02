@@ -36,7 +36,7 @@
               {{ isEditing ? 'Customize Book Volume' : 'New Journal Volume' }}
             </h2>
             <button
-              class="text-stone-400 hover:text-stone-200 text-lg p-1"
+              class="text-stone-400 hover:text-stone-200 text-lg p-1 cursor-pointer"
               @click="handleClose"
             >
               ✕
@@ -156,115 +156,27 @@
               </div>
             </div>
 
-            <!-- Layer Mode & Orientation -->
+            <!-- Shelf Stacking Mode -->
             <div>
-              <div class="flex justify-between items-center mb-1">
-                <label class="text-xs font-mono uppercase text-stone-400">Shelf Orientation / Layer</label>
-                <span v-if="!previewSizing.canTilt && form.layerMode !== 'horizontal-stack'" class="text-[10px] text-amber-400 font-mono">
-                  (Thick volume: Stands upright)
-                </span>
-              </div>
-              <div class="grid grid-cols-4 gap-1.5">
+              <label class="block text-xs font-mono uppercase text-stone-400 mb-1">Shelf Orientation</label>
+              <div class="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  class="py-1.5 text-xs rounded border transition cursor-pointer"
-                  :class="form.layerMode === 'standing' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  class="py-2 text-xs rounded border transition cursor-pointer text-center"
+                  :class="form.layerMode === 'standing' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400 hover:border-stone-600'"
                   @click="form.layerMode = 'standing'"
                 >
-                  Upright
+                  📖 Standing (Automatic Physics)
                 </button>
                 <button
                   type="button"
-                  class="py-1.5 text-xs rounded border transition cursor-pointer"
-                  :class="form.layerMode === 'horizontal-stack' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  class="py-2 text-xs rounded border transition cursor-pointer text-center"
+                  :class="form.layerMode === 'horizontal-stack' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400 hover:border-stone-600'"
                   @click="form.layerMode = 'horizontal-stack'"
                 >
-                  Lie Flat
-                </button>
-                <button
-                  type="button"
-                  class="py-1.5 text-xs rounded border transition cursor-pointer"
-                  :disabled="!previewSizing.canTilt"
-                  :class="[
-                    !previewSizing.canTilt ? 'opacity-30 cursor-not-allowed border-stone-800 text-stone-600' :
-                    form.layerMode === 'leaning-left' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400 hover:border-stone-600'
-                  ]"
-                  @click="previewSizing.canTilt && (form.layerMode = 'leaning-left')"
-                >
-                  Lean Left
-                </button>
-                <button
-                  type="button"
-                  class="py-1.5 text-xs rounded border transition cursor-pointer"
-                  :disabled="!previewSizing.canTilt"
-                  :class="[
-                    !previewSizing.canTilt ? 'opacity-30 cursor-not-allowed border-stone-800 text-stone-600' :
-                    form.layerMode === 'leaning-right' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400 hover:border-stone-600'
-                  ]"
-                  @click="previewSizing.canTilt && (form.layerMode = 'leaning-right')"
-                >
-                  Lean Right
+                  📚 Lie Flat (Horizontal)
                 </button>
               </div>
-            </div>
-
-            <!-- Shelf Slot Position (Left, Center, Right, Slot 0-11) -->
-            <div>
-              <div class="flex justify-between items-center mb-1">
-                <label class="text-xs font-mono uppercase text-stone-400">Shelf Placement (Slot {{ form.slotIndex + 1 }} of 12)</label>
-                <span class="text-xs font-mono text-amber-300 font-bold">
-                  {{ form.slotIndex <= 2 ? 'Left' : form.slotIndex <= 7 ? 'Middle' : 'Right' }}
-                </span>
-              </div>
-              <div class="flex gap-1.5 mb-2">
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
-                  :class="form.slotIndex === 0 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
-                  @click="form.slotIndex = 0"
-                >
-                  Far Left
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
-                  :class="form.slotIndex === 3 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
-                  @click="form.slotIndex = 3"
-                >
-                  Mid-Left
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
-                  :class="form.slotIndex === 6 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
-                  @click="form.slotIndex = 6"
-                >
-                  Center
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
-                  :class="form.slotIndex === 9 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
-                  @click="form.slotIndex = 9"
-                >
-                  Mid-Right
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 py-1 text-[11px] font-mono rounded border transition cursor-pointer"
-                  :class="form.slotIndex === 11 ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
-                  @click="form.slotIndex = 11"
-                >
-                  Far Right
-                </button>
-              </div>
-              <input
-                v-model.number="form.slotIndex"
-                type="range"
-                min="0"
-                max="11"
-                class="w-full accent-amber-500 cursor-pointer"
-              />
             </div>
 
             <!-- Bookmark Ribbon Toggle -->
@@ -314,14 +226,14 @@
           <div class="flex items-center gap-3">
             <button
               type="button"
-              class="px-4 py-2 text-xs rounded text-stone-400 hover:text-stone-200 font-mono"
+              class="px-4 py-2 text-xs rounded text-stone-400 hover:text-stone-200 font-mono cursor-pointer"
               @click="handleClose"
             >
               Cancel
             </button>
             <button
               type="button"
-              class="px-5 py-2 text-xs font-semibold rounded bg-amber-600 hover:bg-amber-500 text-amber-100 tracking-wider uppercase font-serif-book shadow-lg transition"
+              class="px-5 py-2 text-xs font-semibold rounded bg-amber-600 hover:bg-amber-500 text-amber-100 tracking-wider uppercase font-serif-book shadow-lg transition cursor-pointer"
               @click="handleSave"
             >
               Save Journal
@@ -348,21 +260,20 @@ const isEditing = computed(() => !!store.editingBook)
 const curatedColors = [
   { name: 'Crimson Burgundy', hex: '#7a1c2f' },
   { name: 'Forest Emerald', hex: '#1e3d2f' },
-  { name: 'Midnight Navy', hex: '#1b2a47' },
-  { name: 'Warm Ochre', hex: '#a66a38' },
-  { name: 'Royal Plum', hex: '#2b1d3a' },
-  { name: 'Terracotta', hex: '#8a4b27' },
-  { name: 'Charcoal Slate', hex: '#2d3748' },
-  { name: 'Deep Cobalt', hex: '#1a365d' },
-  { name: 'Dark Teal', hex: '#234e52' },
+  { name: 'Midnight Navy', hex: '#1c2833' },
+  { name: 'Cognac Saddle', hex: '#8a4b27' },
+  { name: 'Charcoal Black', hex: '#2c3e50' },
+  { name: 'Royal Plum', hex: '#4a235a' },
+  { name: 'Antique Ochre', hex: '#b7950b' },
+  { name: 'Burnished Teal', hex: '#117a65' },
 ]
 
 const spineStyles: { id: SpineStyle; name: string }[] = [
-  { id: 'ribbed-leather', name: 'Ribbed Leather' },
-  { id: 'gold-foil', name: 'Gold Foil' },
+  { id: 'ribbed-leather', name: 'Ribbed Spine' },
+  { id: 'gold-foil', name: 'Gilded Foil' },
   { id: 'woven-cloth', name: 'Woven Cloth' },
   { id: 'modern-matte', name: 'Modern Matte' },
-  { id: 'vintage-parchment', name: 'Vintage Paper' },
+  { id: 'vintage-parchment', name: 'Vintage Parchment' },
 ]
 
 const form = ref<{
@@ -375,10 +286,9 @@ const form = ref<{
   ribbonColor: string
   hasRibbon: boolean
   layerMode: LayerMode
-  slotIndex: number
   pageCount: number
 }>({
-  title: 'Untitled Journal',
+  title: 'New Journal',
   subtitle: '',
   spineColor: '#7a1c2f',
   spineStyle: 'ribbed-leather',
@@ -387,8 +297,7 @@ const form = ref<{
   ribbonColor: '#d4af37',
   hasRibbon: true,
   layerMode: 'standing',
-  slotIndex: 0,
-  pageCount: 14,
+  pageCount: 1,
 })
 
 watch(
@@ -404,13 +313,11 @@ watch(
         titleFont: book.titleFont,
         ribbonColor: book.ribbonColor,
         hasRibbon: book.hasRibbon,
-        layerMode: book.layerMode,
-        slotIndex: book.slotIndex !== undefined ? book.slotIndex : 0,
+        layerMode: book.layerMode === 'horizontal-stack' ? 'horizontal-stack' : 'standing',
         pageCount: book.pageCount,
       }
     } else {
       // Default for new book
-      const targetSlot = Number(sessionStorage.getItem('target_new_book_slot') || '0')
       form.value = {
         title: 'New Journal',
         subtitle: '',
@@ -421,7 +328,6 @@ watch(
         ribbonColor: '#d4af37',
         hasRibbon: true,
         layerMode: 'standing',
-        slotIndex: targetSlot,
         pageCount: 1,
       }
     }
@@ -440,7 +346,7 @@ const previewBook = computed<Book>(() => ({
   titleFont: form.value.titleFont,
   ribbonColor: form.value.ribbonColor,
   hasRibbon: form.value.hasRibbon,
-  slotIndex: form.value.slotIndex,
+  slotIndex: store.editingBook?.slotIndex ?? 0,
   layerMode: form.value.layerMode,
   stackOrder: 0,
   pageCount: form.value.pageCount,
@@ -469,7 +375,6 @@ async function handleSave() {
       ribbonColor: form.value.ribbonColor,
       hasRibbon: form.value.hasRibbon,
       layerMode: form.value.layerMode,
-      slotIndex: form.value.slotIndex,
       pageCount: form.value.pageCount,
     })
   } else if (store.targetShelfIdForNewBook) {
@@ -484,13 +389,11 @@ async function handleSave() {
       ribbonColor: form.value.ribbonColor,
       hasRibbon: form.value.hasRibbon,
       layerMode: form.value.layerMode,
-      slotIndex: form.value.slotIndex,
     })
     if (positionX !== undefined) {
       await store.updateBook(newBook.id, { positionX })
     }
   }
-  sessionStorage.removeItem('target_new_book_slot')
   sessionStorage.removeItem('target_new_book_positionX')
   store.closeBookCustomizer()
 }
