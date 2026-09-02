@@ -12,16 +12,31 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
 
+      <!-- Live Ghost Drag Preview Overlay (Real Book Spine with Live Computed Physics) -->
+      <div
+        v-if="dragIndicatorX !== null && store.activeDraggingBook"
+        class="absolute bottom-0 z-40 pointer-events-none transition-all duration-75 scale-[1.02]"
+        :style="{ left: `${dragIndicatorX}px` }"
+      >
+        <BookSpine
+          :book="store.activeDraggingBook"
+          :left-neighbor="ghostLeftNeighbor"
+          :right-neighbor="ghostRightNeighbor"
+          :is-ghost="true"
+        />
+      </div>
+
       <!-- Continuous Shelf Floor Canvas -->
       <div
         class="relative min-h-[265px] flex items-end z-10 pb-0.5"
         :style="{ width: `${shelfContentWidth}px`, minWidth: '100%' }"
       >
-        <!-- Books Rendered at their Live Layout & Projected Ghost Positions -->
+        <!-- Stable Books on Shelf -->
         <div
           v-for="item in positionedBooks"
           :key="item.book.id"
-          class="absolute bottom-0 flex items-end transition-all duration-200"
+          class="absolute bottom-0 flex items-end transition-opacity duration-150"
+          :class="store.activeDraggingBook?.id === item.book.id ? 'opacity-30' : ''"
           :style="{ left: `${item.x}px` }"
           @click.stop
         >
@@ -29,7 +44,6 @@
             :book="item.book"
             :left-neighbor="item.leftNeighbor"
             :right-neighbor="item.rightNeighbor"
-            :is-ghost="item.isGhost"
             @select="handleSelectBook"
             @edit="handleEditBook"
           />
@@ -129,42 +143,21 @@ const dragIndicatorX = ref<number | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
 
-// Active Shelf Books incorporating Live Ghost Projection during drag
-const activeShelfBooks = computed<Book[]>(() => {
-  if (!store.activeDraggingBook || dragIndicatorX.value === null) {
-    return books.value
-  }
-
-  // Filter out dragging book from original position
-  const otherBooks = books.value.filter(b => b.id !== store.activeDraggingBook!.id)
-  
-  // Clone dragging book at projected coordinate on this shelf
-  const projectedGhost: Book = {
-    ...store.activeDraggingBook,
-    shelfId: props.shelf.id,
-    positionX: dragIndicatorX.value,
-  }
-
-  return [...otherBooks, projectedGhost]
-})
-
 interface PositionedBook {
   book: Book
   x: number
   width: number
   height: number
   isFlat: boolean
-  isGhost: boolean
   leftNeighbor: NeighborInfo | null
   rightNeighbor: NeighborInfo | null
 }
 
 const positionedBooks = computed<PositionedBook[]>(() => {
-  const currentBooks = activeShelfBooks.value
-  if (currentBooks.length === 0) return []
+  if (books.value.length === 0) return []
 
   // Sort by positionX or slotIndex
-  const sorted = [...currentBooks].sort((a, b) => {
+  const sorted = [...books.value].sort((a, b) => {
     if (a.positionX !== undefined && b.positionX !== undefined) {
       return a.positionX - b.positionX
     }
@@ -173,7 +166,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
 
   // Calculate base coordinates and dimensions respecting full book footprints
   let currentFlowX = 24
-  const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean; isGhost: boolean }[] = []
+  const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean }[] = []
 
   for (const book of sorted) {
     const isExplicitFlat = book.layerMode === 'horizontal-stack'
@@ -188,15 +181,12 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       x = currentFlowX
     }
 
-    const isGhost = Boolean(store.activeDraggingBook && book.id === store.activeDraggingBook.id)
-
     calculatedItems.push({
       book,
       x,
       width: bookWidth,
       height: bookHeight,
       isFlat: isExplicitFlat,
-      isGhost,
     })
 
     // Advance floor flow coordinate with snug 6px separation
@@ -242,13 +232,54 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       width: current.width,
       height: current.height,
       isFlat: current.isFlat,
-      isGhost: current.isGhost,
       leftNeighbor,
       rightNeighbor,
     })
   }
 
   return result
+})
+
+// Ghost Neighbor Context during drag
+const ghostLeftNeighbor = computed<NeighborInfo | null>(() => {
+  if (dragIndicatorX.value === null || !store.activeDraggingBook) return null
+  const targetX = dragIndicatorX.value
+
+  const leftCandidates = positionedBooks.value.filter(
+    p => p.book.id !== store.activeDraggingBook!.id && p.x + p.width <= targetX
+  )
+  if (leftCandidates.length === 0) return null
+
+  const closest = leftCandidates[leftCandidates.length - 1]
+  const distance = Math.max(0, targetX - (closest.x + closest.width))
+  return {
+    book: closest.book,
+    distance,
+    isFlat: closest.isFlat,
+    height: closest.height,
+    width: closest.width,
+  }
+})
+
+const ghostRightNeighbor = computed<NeighborInfo | null>(() => {
+  if (dragIndicatorX.value === null || !store.activeDraggingBook) return null
+  const targetX = dragIndicatorX.value
+  const draggingW = calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
+
+  const rightCandidates = positionedBooks.value.filter(
+    p => p.book.id !== store.activeDraggingBook!.id && p.x >= targetX + draggingW
+  )
+  if (rightCandidates.length === 0) return null
+
+  const closest = rightCandidates[0]
+  const distance = Math.max(0, closest.x - (targetX + draggingW))
+  return {
+    book: closest.book,
+    distance,
+    isFlat: closest.isFlat,
+    height: closest.height,
+    width: closest.width,
+  }
 })
 
 const trailingButtonX = computed(() => {
