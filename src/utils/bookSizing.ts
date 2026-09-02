@@ -68,10 +68,10 @@ export interface NeighborInfo {
  * 2. Thick Volume Stability: Spine width > 45px always stands upright.
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
  * 4. Left Wall Leaning: Books at shelf edge (X <= 8px) lean against the vertical frame (-5.5 deg).
- * 5. Height-Aware Mutual Lean / A-Frame: When 2 books lean toward each other, the taller book leans more to meet the shorter book's top corner.
- * 6. Dynamic Height-Aware Gap-Spanning: Contact height is min(H, neighbor.height), so taller books lean more when resting on shorter neighbors.
- * 7. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
- * 8. Flat Book Contact: Rests against flat book's raised corner at 6.0 deg.
+ * 5. Flat Book Contact: Adjacent to a flat book (gap <= 12px) rests gently at 5.5 deg. If gap > 12px, falls flat on the floor.
+ * 6. Height-Aware Mutual Lean / A-Frame: When 2 books lean toward each other, the taller book leans more to meet the shorter book's top corner.
+ * 7. Dynamic Height-Aware Gap-Spanning: Contact height is min(H, neighbor.height), so taller books lean more when resting on shorter neighbors.
+ * 8. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
  * 9. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
  */
 export function getBookSizing(
@@ -160,18 +160,33 @@ export function getBookSizing(
     }
   }
 
-  // 7. Flat Book Contact
-  if (neighbor.isFlat) {
-    const angleRad = (6.0 * Math.PI) / 180
-    const sign = leanDir === 'right' ? 1 : -1
-    return {
-      width: W,
-      height: H,
-      rotationDeg: sign * 6.0,
-      floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
-      canTilt: true,
-      isFlat: false,
-      topEdgeDetail: false,
+  // 7. Flat Book Contact (Flat book on floor)
+  const isNeighborFlatVolume = neighbor.isFlat || (neighbor.width > 60 && neighbor.height <= 45)
+  if (isNeighborFlatVolume) {
+    if (neighbor.distance <= 12) {
+      // Adjacent to flat book -> gentle resting tilt against the raised corner
+      const angleRad = (5.5 * Math.PI) / 180
+      const sign = leanDir === 'right' ? 1 : -1
+      return {
+        width: W,
+        height: H,
+        rotationDeg: sign * 5.5,
+        floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    } else {
+      // Open gap to flat book (> 12px) -> cannot lean across void onto thin edge -> falls flat on shelf floor
+      return {
+        width: H,
+        height: W,
+        rotationDeg: 0,
+        floorLift: 0,
+        canTilt: true,
+        isFlat: true,
+        topEdgeDetail: true,
+      }
     }
   }
 

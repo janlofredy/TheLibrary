@@ -191,6 +191,16 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     currentFlowX = Math.max(currentFlowX, x + bookWidth + 6)
   }
 
+  // Pre-resolve isFlat status for books falling flat on open floor
+  const preliminarySizings = calculatedItems.map(item => getBookSizing(item.book))
+  for (let i = 0; i < calculatedItems.length; i++) {
+    if (preliminarySizings[i].isFlat) {
+      calculatedItems[i].isFlat = true
+      calculatedItems[i].width = preliminarySizings[i].width
+      calculatedItems[i].height = preliminarySizings[i].height
+    }
+  }
+
   // Determine physical neighbor contact information
   const result: PositionedBook[] = []
   for (let i = 0; i < calculatedItems.length; i++) {
