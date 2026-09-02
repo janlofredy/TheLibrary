@@ -69,7 +69,7 @@ The application is engineered to be deployed as a static site directly to **GitH
     - Fonts: *Playfair Display (Serif), Cinzel (Classic Roman), Fira Code (Technical), Caveat (Calligraphy), Inter (Modern)*.
   - **Ribbon Bookmarks**: Colored silk bookmark ribbon dangling below the shelf ledge for favorites or active journals.
 
-### 3.2 Dynamic Book Sizing Engine (Thickness & Seeded Height)
+### 3.2 Dynamic Book Sizing & Procedural Height Engine
 
 #### A. Dynamic Spine Thickness (Page Count Scaling)
 The visual thickness (width) of a book spine on the shelf dynamically scales based on the number of written pages:
@@ -78,26 +78,67 @@ $$\text{Spine Width} = \operatorname{clamp}\left(W_{\min},\; W_{\text{base}} + (
 
 - **Minimum Spine Width ($W_{\min}$)**: `28px` (ensures readability of vertical titles on fresh books).
 - **Base Width ($W_{\text{base}}$)**: `32px`.
-- **Page Growth Factor ($\Delta_{\text{page}}$)**: `1.5px` per written page (with logarithmic scaling after 50 pages).
+- **Page Growth Factor ($\Delta_{\text{page}}$)**: `1.6px` per written page (with logarithmic scaling after 25 pages).
 - **Maximum Spine Width ($W_{\max}$)**: `110px` (maintains natural shelf proportions).
 - **Page Edge Stratification**: When books exceed `48px` in thickness, realistic paper-leaf layering renders on the top edge.
 
 #### B. Procedural Book Height (Deterministic UUID Seed)
 To create a realistic, organic bookshelf where books have naturally varied heights (pocket editions, standard octavos, tall folios) without requiring manual configuration:
-- Every book's height is **deterministically generated using a hash of its unique `UUID`**:
+- Every book's height is **deterministically generated using a 32-bit FNV-1a hash of its unique `UUID`**:
   $$\text{Seed} = \operatorname{Hash32}(\text{book.id})$$
   $$\text{Height} = H_{\min} + \left(\frac{\text{Seed} \pmod{1000}}{1000} \times (H_{\max} - H_{\min})\right)$$
-- **Height Bounds**: $H_{\min} = 190\text{px}$ (Compact/Pocket) to $H_{\max} = 265\text{px}$ (Tall Grand Volume).
+- **Height Bounds**: $H_{\min} = 195\text{px}$ (Compact/Pocket) to $H_{\max} = 265\text{px}$ (Tall Grand Volume).
 - **Consistency Guarantee**: Because the seed is derived strictly from the `book.id` UUID, a book's physical height is 100% consistent across reloads, devices, and shared views with zero storage overhead.
 
-### 3.3 Shelf Spatial Placement & Layering Modes
-Users can arrange their books with tactile freedom across the shelf:
-- **Shelf Spot / Slot Positioning**: Books can be placed at specific coordinate slots or reordered with drag-and-drop, allowing intentional gaps, bookends, or decorative spacing.
-- **Layer & Stacking Orientations**:
-  - `standing`: Standard vertical upright book placement.
-  - `leaning-left` / `leaning-right`: Books casually leaning at a natural angle ($\approx -8^\circ$ to $+8^\circ$) against neighboring books or the shelf wall.
-  - `horizontal-stack`: Laying books flat horizontally in stacked layers (bottom, middle, top) with spine facing forward.
-  - `depth-layer`: Foreground, midground, and background z-layering on deep shelves.
+---
+
+### 3.3 First-Principles 2D Bookshelf Physics Engine
+
+The bookshelf implements a deterministic first-principles physical mechanics engine governing leaning, contact forces, and gravity to deliver an authentic, tactile library experience:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                     FIRST-PRINCIPLES PHYSICAL EQUATIONS                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ 1. Dynamic Gap-Spanning Lean:                                               │
+│    sin(θ) = totalGap / min(H_book, H_neighbor)                               │
+│                                                                              │
+│ 2. Height-Differential Tilt:                                                │
+│    sin(θ_tall) = [gap · H_tall / (H_tall + H_short)] / H_short               │
+│                                                                              │
+│ 3. Mutual A-Frame Arch:                                                      │
+│    Two adjacent books leaning inward meet at apex: sin(θ) = gap / (H_1 + H_2)│
+│                                                                              │
+│ 4. Domino Cascade Propagation:                                               │
+│    totalGap = gap + H_neighbor · sin(|θ_neighbor|)                           │
+│                                                                              │
+│ 5. Wall-Supported Upright Stance:                                            │
+│    Books flush against left wall (X ≤ 28px) or right wall (dist ≤ 28px)      │
+│    with an adjacent book stand firmly UPRIGHT (θ = 0°).                      │
+│                                                                              │
+│ 6. Outward Fall-to-Flat Rule:                                                │
+│    Unsupported books (gap ≥ H) fall flat on open floor:                      │
+│    - Left-falling: [X_baseRight - H, X_baseRight]                            │
+│    - Right-falling: [X, X + H]                                               │
+│                                                                              │
+│ 7. Inviolable Hard Upright Bounds:                                           │
+│    Every book occupies upright footprint [X_i, X_i + W_i] with zero overlap. │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### A. Contact Normal & Leaning Rules
+1. **Packed Volumes Stand Upright**: Books packed snugly side-by-side ($gap \le 16\text{px}$ on both sides) receive reciprocal normal forces and stand strictly upright ($\theta = 0^\circ$).
+2. **Dynamic Gap-Spanning Reach**: Books tilt across open gaps until their top corner physically contacts the adjacent volume, eliminating floating air gaps.
+3. **Height-Differential Tilt**: When a tall volume leans onto a shorter volume, the tall volume tilts steeper downward to rest against the top edge of the shorter book.
+4. **Mutual A-Frame Arches**: When two adjacent volumes tilt toward each other, they form a stable triangular arch resting on their top apex contact points.
+5. **Cascading Domino Propagation**: In a multi-book cascade, each successive volume spans the tilted top surface of its predecessor ($totalGap = gap + H_N \sin|\theta_N|$).
+6. **Outward Stack-Edge Leaning**: A volume at the end of a packed stack leans **outward** into open space, supported from behind by the upright stack.
+7. **Wall-Supported Upright Stance**: Volumes adjacent to the left wooden wall frame ($X \le 28\text{px}$) or right wooden wall frame ($X \ge \text{shelfWidth} - 28\text{px}$) stand **firmly upright ($\theta = 0^\circ$)**, supported between the rigid wall and the book stack.
+8. **Outward Fall-to-Flat**: Solitary volumes without support in reach ($gap \ge H$) topple onto the floor (`isFlat: true`). When falling left, their flat footprint is positioned at $[X_{\text{baseRight}} - H, X_{\text{baseRight}}]$, lying completely to the left of standing stacks with zero clipping.
+9. **Inviolable Hard Upright Bounds**: In `resolveNonOverlappingPosition`, each book's upright base interval $[X_i, X_i + W_i]$ is enforced as a hard boundary. Books strictly dock beside each other with zero overlap.
+10. **1:1 Live Drag Ghost Preview**: The drag ghost dynamically calculates its rendered coordinate `ghostRenderedX`, wall tilts, domino reach, and flat fall geometry, guaranteeing a 1:1 match with the settled drop position.
+
+---
 
 ### 3.4 The Reading Desk & Book-Opening Experience
 - **Smooth 3D Perspective Transition**: Clicking a book smoothly glides it off the shelf using CSS 3D matrix transforms (`translate3d`, `rotateY`, `scale3d`) onto a focused writing desk.
