@@ -63,25 +63,28 @@ export interface NeighborInfo {
 }
 
 /**
- * Computes individual book sizing according to physical bookshelf mechanics:
- * 1. Packed Books: Books placed right next to each other (gap <= 12px) support each other and stand firmly UPRIGHT without lean (0 deg).
- * 2. Gap Leaning: A book with an open gap (12px < gap <= 35px) to a neighboring book or wall tilts (5.5 deg) to lean against it.
- * 3. Open Unsupported Books: A book with no neighbor within 35px falls flat on the wooden floor (isFlat = true).
- * 4. Thick Volumes: Spine width > 45px always stands upright.
+ * Computes individual book sizing according to the unified master physical specification:
+ * 1. Explicit Flat Mode: width = H, height = W, isFlat = true.
+ * 2. Thick Volume Stability: Spine width > 45px always stands upright.
+ * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
+ * 4. Left Wall Leaning: Books at shelf edge (X <= 8px) lean against the vertical frame (-5.5 deg).
+ * 5. Dynamic Gap-Spanning Angle: Rotates across the gap (sin(theta) = totalGap / H) until touching the adjacent book.
+ * 6. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted.
+ * 7. Flat Book Contact: Rests against flat book's raised corner at 6.0 deg.
+ * 8. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
  */
 export function getBookSizing(
   book: Book,
   neighbors?: { left?: NeighborInfo | null; right?: NeighborInfo | null }
 ): BookSizing {
-  const spineThickness = calculateSpineWidth(book.pageCount || 0)
-  const fullBookHeight = calculateBookHeight(book.id)
-  const flatBookLength = fullBookHeight
+  const W = calculateSpineWidth(book.pageCount || 0)
+  const H = calculateBookHeight(book.id)
 
-  // Explicit Horizontal Flat Book Mode
+  // 1. Explicit Flat Mode
   if (book.layerMode === 'horizontal-stack') {
     return {
-      width: flatBookLength,
-      height: spineThickness,
+      width: H,
+      height: W,
       rotationDeg: 0,
       floorLift: 0,
       canTilt: false,
@@ -90,12 +93,12 @@ export function getBookSizing(
     }
   }
 
-  // Thick Volume Check (Spine width > 45px stands firmly upright)
-  const canTilt = spineThickness <= 45
+  // 2. Thick Volume Stability (W > 45px)
+  const canTilt = W <= 45
   if (!canTilt) {
     return {
-      width: spineThickness,
-      height: fullBookHeight,
+      width: W,
+      height: H,
       rotationDeg: 0,
       floorLift: 0,
       canTilt: false,
@@ -104,19 +107,13 @@ export function getBookSizing(
     }
   }
 
-  const BASE_ANGLE = 5.5
-  const angleRad = (BASE_ANGLE * Math.PI) / 180
-  const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-
+  // 3. Packed Books (gap <= 12px on both sides) -> Stand Upright
   const hasTightLeft = Boolean(neighbors?.left && neighbors.left.distance <= 12 && !neighbors.left.isFlat)
   const hasTightRight = Boolean(neighbors?.right && neighbors.right.distance <= 12 && !neighbors.right.isFlat)
-  const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
-
-  // 1. Packed books touching neighbors side-by-side -> stand firmly UPRIGHT without lean
-  if (hasTightLeft || hasTightRight) {
+  if (hasTightLeft && hasTightRight) {
     return {
-      width: spineThickness,
-      height: fullBookHeight,
+      width: W,
+      height: H,
       rotationDeg: 0,
       floorLift: 0,
       canTilt: true,
@@ -125,54 +122,92 @@ export function getBookSizing(
     }
   }
 
-  // 2. Leaning across a gap (12px < distance <= 35px) towards an adjacent book or wall
-  const hasGapLeft = Boolean(neighbors?.left && neighbors.left.distance > 12 && neighbors.left.distance <= 35)
-  const hasGapRight = Boolean(neighbors?.right && neighbors.right.distance > 12 && neighbors.right.distance <= 35)
+  // 4. Determine Lean Direction from UUID / preference
+  const leanDir = book.layerMode === 'leaning-left' 
+    ? 'left' 
+    : book.layerMode === 'leaning-right' 
+      ? 'right' 
+      : getNaturalLeanDirection(book.id)
 
-  if (isAgainstLeftWall) {
+  const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
+  const neighbor = leanDir === 'right' ? neighbors?.right : neighbors?.left
+
+  // 5. Left Shelf Wall Contact
+  if (leanDir === 'left' && isAgainstLeftWall) {
+    const rad = (5.5 * Math.PI) / 180
     return {
-      width: spineThickness,
-      height: fullBookHeight,
-      rotationDeg: -BASE_ANGLE,
-      floorLift,
+      width: W,
+      height: H,
+      rotationDeg: -5.5,
+      floorLift: Math.ceil(W * Math.sin(rad)) + 1,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,
     }
   }
 
-  if (hasGapLeft) {
+  // 6. Unsupported Open Space (gap >= H or no neighbor) -> Fall Flat
+  if (!neighbor || neighbor.distance >= H) {
     return {
-      width: spineThickness,
-      height: fullBookHeight,
-      rotationDeg: -BASE_ANGLE,
-      floorLift,
+      width: H,
+      height: W,
+      rotationDeg: 0,
+      floorLift: 0,
+      canTilt: true,
+      isFlat: true,
+      topEdgeDetail: true,
+    }
+  }
+
+  // 7. Flat Book Contact
+  if (neighbor.isFlat) {
+    const angleRad = (6.0 * Math.PI) / 180
+    const sign = leanDir === 'right' ? 1 : -1
+    return {
+      width: W,
+      height: H,
+      rotationDeg: sign * 6.0,
+      floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,
     }
   }
 
-  if (hasGapRight) {
+  // 8. Dynamic Gap-Spanning Lean & Cascading Domino Touch
+  const isNeighborTiltedSameDir = neighbor.rotationDeg && Math.sign(neighbor.rotationDeg) === (leanDir === 'right' ? 1 : -1)
+  const neighborTopOffset = isNeighborTiltedSameDir ? neighbor.height * Math.sin((Math.abs(neighbor.rotationDeg!) * Math.PI) / 180) : 0
+  const totalGap = Math.max(0, neighbor.distance) + neighborTopOffset
+
+  if (totalGap <= 8) {
+    // Packed flush against a neighbor
+    const angleDeg = neighbor.rotationDeg ?? 0
+    const rad = (Math.abs(angleDeg) * Math.PI) / 180
     return {
-      width: spineThickness,
-      height: fullBookHeight,
-      rotationDeg: BASE_ANGLE,
-      floorLift,
+      width: W,
+      height: H,
+      rotationDeg: angleDeg,
+      floorLift: Math.ceil(W * Math.sin(rad)) + 1,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,
     }
   }
 
-  // 3. Unsupported solitary volume -> falls flat on the shelf floor
+  // Dynamic span across the gap: sin(theta) = totalGap / H
+  const sinTheta = Math.min(0.65, totalGap / H)
+  const angleRad = Math.asin(sinTheta)
+  const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+  const sign = leanDir === 'right' ? 1 : -1
+  const floorLift = Math.ceil(W * Math.sin(angleRad)) + 1
+
   return {
-    width: flatBookLength,
-    height: spineThickness,
-    rotationDeg: 0,
-    floorLift: 0,
+    width: W,
+    height: H,
+    rotationDeg: sign * angleDeg,
+    floorLift,
     canTilt: true,
-    isFlat: true,
-    topEdgeDetail: true,
+    isFlat: false,
+    topEdgeDetail: false,
   }
 }

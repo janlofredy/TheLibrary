@@ -239,6 +239,25 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     })
   }
 
+  // 2-Pass Cascading Lean Propagation (Right-to-Left for right-leaning stacks, Left-to-Right for left-leaning stacks)
+  const sizings = result.map(p => getBookSizing(p.book, { left: p.leftNeighbor, right: p.rightNeighbor }))
+
+  // Propagate Right-to-Left (books leaning right towards already-tilted neighbors)
+  for (let i = result.length - 2; i >= 0; i--) {
+    if (result[i].rightNeighbor) {
+      result[i].rightNeighbor!.rotationDeg = sizings[i + 1].rotationDeg
+      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor })
+    }
+  }
+
+  // Propagate Left-to-Right (books leaning left towards already-tilted neighbors)
+  for (let i = 1; i < result.length; i++) {
+    if (result[i].leftNeighbor) {
+      result[i].leftNeighbor!.rotationDeg = sizings[i - 1].rotationDeg
+      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor })
+    }
+  }
+
   return result
 })
 
