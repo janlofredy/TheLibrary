@@ -48,13 +48,33 @@ export function calculateBookHeight(bookId: string): number {
 }
 
 /**
- * Computes full sizing, realistic contact tilt angle, and floor anti-clipping lift.
+ * Computes full sizing, neighbor-aware contact tilt angle, horizontal flat layout, and floor anti-clipping lift.
  */
-export function getBookSizing(book: Book): BookSizing {
-  const width = calculateSpineWidth(book.pageCount || 0)
-  const height = calculateBookHeight(book.id)
+export function getBookSizing(
+  book: Book,
+  neighbors?: { left?: Book | null; right?: Book | null }
+): BookSizing {
+  const spineThickness = calculateSpineWidth(book.pageCount || 0)
+  const fullBookHeight = calculateBookHeight(book.id)
 
-  // In physics, only slim/medium books (<= 48px width) can physically lean against a sturdy neighbor
+  // 1. Horizontal Flat Book Mode
+  if (book.layerMode === 'horizontal-stack') {
+    return {
+      width: Math.min(210, Math.max(170, Math.round(fullBookHeight * 0.82))), // Flat lying book length
+      height: spineThickness, // Vertical thickness of the spine lying flat
+      rotationDeg: 0,
+      floorLift: 0,
+      canTilt: false,
+      isFlat: true,
+      topEdgeDetail: true,
+    }
+  }
+
+  // 2. Standing & Leaning Mode
+  const width = spineThickness
+  const height = fullBookHeight
+
+  // Only slim/medium books (<= 48px width) can physically lean
   const canTilt = width <= 48
 
   let rotationDeg = 0
@@ -62,17 +82,35 @@ export function getBookSizing(book: Book): BookSizing {
 
   if (canTilt && (book.layerMode === 'leaning-left' || book.layerMode === 'leaning-right')) {
     const seed = hashString(book.id + '-lean')
-    // Realistic contact angle (3.6deg - 4.8deg) so the top edge makes tangent contact with adjacent books without clipping
-    const baseAngle = 3.6 + ((seed % 12) / 10)
+    let baseAngle = 3.6 + ((seed % 10) / 10) // 3.6deg - 4.5deg natural resting angle
 
-    if (book.layerMode === 'leaning-left') {
-      rotationDeg = -baseAngle
-    } else {
+    // Neighbor-Aware adjustments
+    if (book.layerMode === 'leaning-right') {
+      const right = neighbors?.right
+      if (right && right.layerMode === 'standing') {
+        // Leaning tangent against standing neighbor
+        baseAngle = 4.0
+      } else if (right && right.layerMode === 'leaning-right') {
+        // Parallel domino lean
+        baseAngle = 4.2
+      } else if (right && right.layerMode === 'leaning-left') {
+        // Tent apex contact
+        baseAngle = 3.5
+      }
       rotationDeg = baseAngle
+    } else if (book.layerMode === 'leaning-left') {
+      const left = neighbors?.left
+      if (left && left.layerMode === 'standing') {
+        baseAngle = 4.0
+      } else if (left && left.layerMode === 'leaning-left') {
+        baseAngle = 4.2
+      } else if (left && left.layerMode === 'leaning-right') {
+        baseAngle = 3.5
+      }
+      rotationDeg = -baseAngle
     }
 
-    // Floor anti-clipping compensation:
-    // Lifting upward by width * sin(|theta|) keeps the bottom corner exactly flush with the shelf floor
+    // Floor anti-clipping upward compensation
     const rad = Math.abs(rotationDeg) * (Math.PI / 180)
     floorLift = Math.ceil(width * Math.sin(rad)) + 1
   }
@@ -85,6 +123,7 @@ export function getBookSizing(book: Book): BookSizing {
     rotationDeg,
     floorLift,
     canTilt,
+    isFlat: false,
     topEdgeDetail,
   }
 }

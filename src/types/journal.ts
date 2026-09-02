@@ -6,6 +6,7 @@ export type TitleColor = 'gold' | 'silver' | 'white' | 'copper' | 'black'
 export type LayerMode = 'standing' | 'leaning-left' | 'leaning-right' | 'horizontal-stack'
 export type PaperStyle = 'lined' | 'dotted' | 'parchment' | 'slate'
 export type Mood = 'great' | 'good' | 'neutral' | 'low' | 'stormy'
+export type BookendStyle = 'brass-bracket' | 'carved-oak' | 'cast-iron'
 
 export interface Library {
   id: string
@@ -68,5 +69,6 @@ export interface BookSizing {
   rotationDeg: number
   floorLift: number
   canTilt: boolean
+  isFlat: boolean
   topEdgeDetail: boolean
 }

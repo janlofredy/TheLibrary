@@ -5,11 +5,18 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
       
-      <!-- Bookshelf Floor Row (Snug Tight-Packed Spines with Natural Spacing) -->
+      <!-- Bookshelf Floor Row (Snug Tight-Packed Spines with Bookends & Natural Spacing) -->
       <div class="flex items-end gap-1 sm:gap-1.5 z-10 min-w-full pb-0.5">
-        <!-- Render shelf items (Books + Natural Gap Spacers) -->
+        <!-- Left Visual Bookend (Supports left-most book from sliding/falling) -->
+        <Bookend
+          v-if="books.length > 0"
+          position="left"
+          :style="bookendStyle"
+        />
+
+        <!-- Render shelf items (Books with neighbor awareness + Natural Gap Spacers) -->
         <template v-for="(item, idx) in shelfDisplayItems" :key="item.type === 'book' ? item.book.id : `spacer-${idx}`">
-          <!-- Book Spine -->
+          <!-- Book Spine with Neighbor Awareness -->
           <div
             v-if="item.type === 'book'"
             class="relative flex items-end"
@@ -19,6 +26,8 @@
           >
             <BookSpine
               :book="item.book"
+              :left-neighbor="getNeighbor(idx, -1)"
+              :right-neighbor="getNeighbor(idx, 1)"
               @select="handleSelectBook"
               @edit="handleEditBook"
             />
@@ -46,6 +55,13 @@
           </div>
         </template>
 
+        <!-- Right Visual Bookend (Supports right-most book) -->
+        <Bookend
+          v-if="books.length > 0"
+          position="right"
+          :style="bookendStyle"
+        />
+
         <!-- Drop target at end of shelf books -->
         <div
           class="relative h-44 w-12 flex items-end justify-center transition-all duration-200 ml-1"
@@ -54,7 +70,7 @@
           @dragleave="handleDragLeave(nextAvailableSlot)"
           @drop="handleDrop(nextAvailableSlot)"
         >
-          <!-- Add Book Bookend Button -->
+          <!-- Add Book Button -->
           <button
             type="button"
             class="h-[210px] w-12 rounded-t-sm border border-dashed border-stone-600/30 hover:border-amber-400/80 hover:bg-amber-400/10 transition-all duration-200 flex flex-col items-center justify-center text-stone-500 hover:text-amber-300 group/add cursor-pointer flex-shrink-0"
@@ -128,9 +144,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { Shelf, Book } from '@/types/journal'
+import type { Shelf, Book, BookendStyle } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
 import BookSpine from './BookSpine.vue'
+import Bookend from './Bookend.vue'
 
 const props = defineProps<{
   shelf: Shelf
@@ -140,6 +157,12 @@ const store = useLibraryStore()
 const dragOverSlot = ref<number | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
+
+const bookendStyle = computed<BookendStyle>(() => {
+  if (props.shelf.nameplateStyle === 'brass') return 'brass-bracket'
+  if (props.shelf.nameplateStyle === 'matte-black') return 'cast-iron'
+  return 'carved-oak'
+})
 
 type ShelfDisplayItem = 
   | { type: 'book'; book: Book; slotIndex: number }
@@ -157,12 +180,12 @@ const shelfDisplayItems = computed<ShelfDisplayItem[]>(() => {
   for (const book of sorted) {
     const currentSlot = book.slotIndex ?? (lastSlot + 1)
     
-    // If there is an intentional gap between slots (e.g. slot 0 and slot 3)
+    // If there is an intentional gap between slots
     if (lastSlot !== -1 && currentSlot > lastSlot + 1) {
       const gapSlots = currentSlot - (lastSlot + 1)
       items.push({
         type: 'spacer',
-        width: Math.min(gapSlots * 24, 72), // subtle realistic space
+        width: Math.min(gapSlots * 24, 72),
         slotIndex: lastSlot + 1,
       })
     }
@@ -178,6 +201,15 @@ const shelfDisplayItems = computed<ShelfDisplayItem[]>(() => {
 
   return items
 })
+
+function getNeighbor(currentDisplayIndex: number, direction: -1 | 1): Book | null {
+  const targetIndex = currentDisplayIndex + direction
+  const item = shelfDisplayItems.value[targetIndex]
+  if (item && item.type === 'book') {
+    return item.book
+  }
+  return null
+}
 
 const nextAvailableSlot = computed(() => {
   if (books.value.length === 0) return 0

@@ -160,14 +160,14 @@
             <div>
               <div class="flex justify-between items-center mb-1">
                 <label class="text-xs font-mono uppercase text-stone-400">Shelf Orientation / Layer</label>
-                <span v-if="!previewSizing.canTilt" class="text-[10px] text-amber-400 font-mono">
+                <span v-if="!previewSizing.canTilt && form.layerMode !== 'horizontal-stack'" class="text-[10px] text-amber-400 font-mono">
                   (Thick volume: Stands upright)
                 </span>
               </div>
-              <div class="flex gap-2">
+              <div class="grid grid-cols-4 gap-1.5">
                 <button
                   type="button"
-                  class="flex-1 py-1.5 text-xs rounded border transition cursor-pointer"
+                  class="py-1.5 text-xs rounded border transition cursor-pointer"
                   :class="form.layerMode === 'standing' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
                   @click="form.layerMode = 'standing'"
                 >
@@ -175,7 +175,15 @@
                 </button>
                 <button
                   type="button"
-                  class="flex-1 py-1.5 text-xs rounded border transition cursor-pointer"
+                  class="py-1.5 text-xs rounded border transition cursor-pointer"
+                  :class="form.layerMode === 'horizontal-stack' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  @click="form.layerMode = 'horizontal-stack'"
+                >
+                  Lie Flat
+                </button>
+                <button
+                  type="button"
+                  class="py-1.5 text-xs rounded border transition cursor-pointer"
                   :disabled="!previewSizing.canTilt"
                   :class="[
                     !previewSizing.canTilt ? 'opacity-30 cursor-not-allowed border-stone-800 text-stone-600' :
@@ -187,7 +195,7 @@
                 </button>
                 <button
                   type="button"
-                  class="flex-1 py-1.5 text-xs rounded border transition cursor-pointer"
+                  class="py-1.5 text-xs rounded border transition cursor-pointer"
                   :disabled="!previewSizing.canTilt"
                   :class="[
                     !previewSizing.canTilt ? 'opacity-30 cursor-not-allowed border-stone-800 text-stone-600' :
