@@ -164,8 +164,8 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     return (a.slotIndex ?? 0) - (b.slotIndex ?? 0)
   })
 
-  // Calculate base coordinates and dimensions respecting full book footprints
-  let currentFlowX = 24
+  // Calculate base coordinates and dimensions respecting full book footprints starting at the very edge
+  let currentFlowX = 0
   const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean }[] = []
 
   for (const book of sorted) {
@@ -283,7 +283,7 @@ const ghostRightNeighbor = computed<NeighborInfo | null>(() => {
 })
 
 const trailingButtonX = computed(() => {
-  if (positionedBooks.value.length === 0) return 24
+  if (positionedBooks.value.length === 0) return 0
   const maxRight = Math.max(...positionedBooks.value.map(p => p.x + p.width))
   return maxRight + 16
 })
@@ -302,20 +302,24 @@ function handleTrackDragOver(e: DragEvent) {
     : 34
   const rawX = Math.max(0, e.clientX - rect.left + scrollLeft - Math.round(draggingW / 2))
 
-  // Magnetic Snapping: when within 18px of an adjacent book, snap cleanly with 2px gap
   let targetX = rawX
-  for (const item of positionedBooks.value) {
-    if (store.activeDraggingBook && item.book.id === store.activeDraggingBook.id) continue
+  // Snap to very left edge (x = 0) if dragged near shelf start
+  if (rawX < 14) {
+    targetX = 0
+  } else {
+    for (const item of positionedBooks.value) {
+      if (store.activeDraggingBook && item.book.id === store.activeDraggingBook.id) continue
 
-    // Snap to right side of item
-    if (Math.abs(rawX - (item.x + item.width)) < 18) {
-      targetX = item.x + item.width + 2
-      break
-    }
-    // Snap to left side of item
-    if (Math.abs(rawX - (item.x - draggingW)) < 18) {
-      targetX = Math.max(0, item.x - draggingW - 2)
-      break
+      // Snap to right side of item
+      if (Math.abs(rawX - (item.x + item.width)) < 18) {
+        targetX = item.x + item.width + 2
+        break
+      }
+      // Snap to left side of item
+      if (Math.abs(rawX - (item.x - draggingW)) < 18) {
+        targetX = Math.max(0, item.x - draggingW - 2)
+        break
+      }
     }
   }
 

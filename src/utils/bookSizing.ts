@@ -201,6 +201,24 @@ export function getBookSizing(
   } else {
     // Leaning Left
     const neighbor = neighbors?.left
+    const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
+    
+    if (isAgainstLeftWall) {
+      // Leaning against the left shelf vertical wall!
+      const baseAngle = 5.4
+      const rad = baseAngle * (Math.PI / 180)
+      const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
+
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: -baseAngle,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
     
     // Check if there is a neighbor on the left within potential collision / support range
     if (!neighbor || neighbor.distance >= flatBookLength) {
