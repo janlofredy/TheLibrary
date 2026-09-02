@@ -3,7 +3,7 @@
     <!-- Shelf Top Ambient Occlusion Cavity (Continuous Wooden Shelf Canvas) -->
     <div
       ref="shelfTrack"
-      class="relative min-h-[300px] w-full flex items-end px-6 sm:px-12 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden select-none cursor-crosshair"
+      class="relative min-h-[300px] w-full flex items-end px-4 sm:px-8 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden select-none cursor-crosshair"
       @dragover.prevent="handleTrackDragOver"
       @dragleave="handleTrackDragLeave"
       @drop.prevent="handleTrackDrop"
@@ -12,25 +12,26 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
 
-      <!-- Live Ghost Drag Preview Overlay (Real Book Spine with Live Computed Physics) -->
+      <!-- Continuous Shelf Floor Canvas (Shares exact 1:1 coordinate space with Ghost & Books) -->
       <div
-        v-if="dragIndicatorX !== null && store.activeDraggingBook"
-        class="absolute bottom-0 z-40 pointer-events-none transition-all duration-75 scale-[1.02]"
-        :style="{ left: `${dragIndicatorX}px` }"
-      >
-        <BookSpine
-          :book="store.activeDraggingBook"
-          :left-neighbor="ghostLeftNeighbor"
-          :right-neighbor="ghostRightNeighbor"
-          :is-ghost="true"
-        />
-      </div>
-
-      <!-- Continuous Shelf Floor Canvas -->
-      <div
+        ref="shelfCanvas"
         class="relative min-h-[265px] flex items-end z-10 pb-0.5"
         :style="{ width: `${shelfContentWidth}px`, minWidth: '100%' }"
       >
+        <!-- Live Ghost Drag Preview Overlay (Positioned in exact same coordinate space) -->
+        <div
+          v-if="dragIndicatorX !== null && store.activeDraggingBook"
+          class="absolute bottom-0 z-40 pointer-events-none transition-all duration-75 scale-[1.02]"
+          :style="{ left: `${dragIndicatorX}px` }"
+        >
+          <BookSpine
+            :book="store.activeDraggingBook"
+            :left-neighbor="ghostLeftNeighbor"
+            :right-neighbor="ghostRightNeighbor"
+            :is-ghost="true"
+          />
+        </div>
+
         <!-- Stable Books on Shelf -->
         <div
           v-for="item in positionedBooks"
@@ -139,6 +140,7 @@ const props = defineProps<{
 
 const store = useLibraryStore()
 const shelfTrack = ref<HTMLElement | null>(null)
+const shelfCanvas = ref<HTMLElement | null>(null)
 const dragIndicatorX = ref<number | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
@@ -295,12 +297,16 @@ const shelfContentWidth = computed(() => {
 function handleTrackDragOver(e: DragEvent) {
   if (!shelfTrack.value) return
   e.dataTransfer!.dropEffect = 'move'
-  const rect = shelfTrack.value.getBoundingClientRect()
-  const scrollLeft = shelfTrack.value.scrollLeft
+  
+  // Calculate relative to the actual shelfCanvas container for 1:1 exact alignment
+  const canvasRect = shelfCanvas.value 
+    ? shelfCanvas.value.getBoundingClientRect() 
+    : shelfTrack.value.getBoundingClientRect()
+  
   const draggingW = store.activeDraggingBook 
     ? calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
     : 34
-  const rawX = Math.max(0, e.clientX - rect.left + scrollLeft - Math.round(draggingW / 2))
+  const rawX = Math.max(0, Math.round(e.clientX - canvasRect.left - draggingW / 2))
 
   let targetX = rawX
   // Snap to very left edge (x = 0) if dragged near shelf start
@@ -346,9 +352,10 @@ async function handleTrackDrop(e: DragEvent) {
 
 function handleShelfTrackClick(e: MouseEvent) {
   if (!shelfTrack.value) return
-  const rect = shelfTrack.value.getBoundingClientRect()
-  const scrollLeft = shelfTrack.value.scrollLeft
-  const clickX = Math.max(0, Math.round(e.clientX - rect.left + scrollLeft - 18))
+  const canvasRect = shelfCanvas.value 
+    ? shelfCanvas.value.getBoundingClientRect() 
+    : shelfTrack.value.getBoundingClientRect()
+  const clickX = Math.max(0, Math.round(e.clientX - canvasRect.left - 18))
   handleAddBookAt(clickX)
 }
 
