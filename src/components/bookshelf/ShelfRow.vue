@@ -3,7 +3,7 @@
     <!-- Shelf Top Ambient Occlusion Cavity (Bounded Physical Wooden Shelf Track) -->
     <div
       ref="shelfTrack"
-      class="relative min-h-[300px] w-full flex items-end px-4 sm:px-8 pt-8 pb-1.5 overflow-hidden select-none cursor-crosshair"
+      class="relative min-h-[300px] w-full flex items-end px-0 pt-8 pb-1.5 overflow-hidden select-none cursor-crosshair"
       @dragover.prevent="handleTrackDragOver"
       @dragleave="handleTrackDragLeave"
       @drop.prevent="handleTrackDrop"
@@ -12,7 +12,7 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
 
-      <!-- Bounded Shelf Floor Canvas (100% width, no horizontal scroll) -->
+      <!-- Bounded Shelf Floor Canvas (100% width, flush from left wall X=0 to right wall) -->
       <div
         ref="shelfCanvas"
         class="relative min-h-[265px] w-full flex items-end z-10 pb-0.5"
