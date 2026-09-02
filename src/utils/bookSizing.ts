@@ -57,15 +57,16 @@ export interface NeighborInfo {
   book: Book
   distance: number
   isFlat: boolean
+  height: number
+  width: number
 }
 
 /**
  * Computes full sizing according to the formal physics specification:
- * 1. Deterministic UUID lean direction.
- * 2. Automatic leaning for slim books (width <= 45px).
- * 3. Sandwiched between two books -> stands upright.
- * 4. Unsupported on lean side -> falls over & lies flat.
- * 5. Supported on lean side -> dynamically calculates lean angle bounded by neighbor gap (ZERO CLIPPING).
+ * 1. Computes neighbor height and distance on the lean side.
+ * 2. If a neighbor is on the lean side, calculates exact lean angle bounded by neighbor height and gap (ZERO CLIPPING).
+ * 3. If neighbor is a flat book, leans and rests on top of the flat book's raised edge.
+ * 4. Only falls completely flat if there is sufficient clearance without colliding into a neighbor.
  */
 export function getBookSizing(
   book: Book,
@@ -128,13 +129,13 @@ export function getBookSizing(
     leanDir = getNaturalLeanDirection(book.id)
   }
 
-  // 5. Evaluate Support on the Lean Side
+  // 5. Evaluate Support & Height on the Lean Side
   if (leanDir === 'right') {
     const neighbor = neighbors?.right
-    const hasRightSupport = Boolean(neighbor && neighbor.distance <= 50)
     
-    if (!hasRightSupport) {
-      // Unsupported on the right: falls over and lies flat on the shelf floor!
+    // Check if there is a neighbor on the right within potential collision / support range
+    if (!neighbor || neighbor.distance >= flatBookLength) {
+      // Completely unsupported with plenty of open space -> falls flat on the shelf floor
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -146,10 +147,31 @@ export function getBookSizing(
       }
     }
 
-    // Supported on the right: compute exact tilt angle based on gap to prevent side clipping!
-    const availableGap = neighbor ? neighbor.distance : 18
-    if (availableGap < 2) {
-      // Too tight to lean -> stands upright
+    // A neighbor exists within reach on the right!
+    // Compute lean angle based on neighbor distance and neighbor height
+    if (neighbor.isFlat) {
+      // Leaning on a flat lying book: rests against the top edge of the flat volume
+      const flatH = Math.max(28, neighbor.height)
+      const gap = Math.max(0, neighbor.distance)
+      const angleRad = Math.min(0.22, Math.atan2(gap + 8, flatH + 80))
+      const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: angleDeg,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    // Standing neighbor on right
+    const gap = neighbor.distance
+    if (gap < 2) {
+      // Flush against neighbor -> stands upright
       return {
         width: spineThickness,
         height: fullBookHeight,
@@ -161,7 +183,8 @@ export function getBookSizing(
       }
     }
 
-    const reachX = Math.min(availableGap, 22)
+    // Leaning against standing neighbor: swing top by at most gap (max 22px)
+    const reachX = Math.min(gap, 22)
     const angleRad = Math.asin(Math.min(0.25, reachX / fullBookHeight))
     const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
     const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
@@ -178,10 +201,10 @@ export function getBookSizing(
   } else {
     // Leaning Left
     const neighbor = neighbors?.left
-    const hasLeftSupport = Boolean(neighbor && neighbor.distance <= 50)
     
-    if (!hasLeftSupport) {
-      // Unsupported on the left: falls over and lies flat on the shelf floor!
+    // Check if there is a neighbor on the left within potential collision / support range
+    if (!neighbor || neighbor.distance >= flatBookLength) {
+      // Completely unsupported with plenty of open space -> falls flat on the shelf floor
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -193,10 +216,30 @@ export function getBookSizing(
       }
     }
 
-    // Supported on the left: compute exact tilt angle based on gap to prevent side clipping!
-    const availableGap = neighbor ? neighbor.distance : 18
-    if (availableGap < 2) {
-      // Too tight to lean -> stands upright
+    // A neighbor exists within reach on the left!
+    if (neighbor.isFlat) {
+      // Leaning on a flat lying book to the left
+      const flatH = Math.max(28, neighbor.height)
+      const gap = Math.max(0, neighbor.distance)
+      const angleRad = Math.min(0.22, Math.atan2(gap + 8, flatH + 80))
+      const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: -angleDeg,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    // Standing neighbor on left
+    const gap = neighbor.distance
+    if (gap < 2) {
+      // Flush against neighbor -> stands upright
       return {
         width: spineThickness,
         height: fullBookHeight,
@@ -208,7 +251,8 @@ export function getBookSizing(
       }
     }
 
-    const reachX = Math.min(availableGap, 22)
+    // Leaning against standing neighbor
+    const reachX = Math.min(gap, 22)
     const angleRad = Math.asin(Math.min(0.25, reachX / fullBookHeight))
     const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
     const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1

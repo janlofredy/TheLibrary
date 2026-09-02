@@ -197,7 +197,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
 
   // Calculate base coordinates and dimensions respecting full book footprints
   let currentFlowX = 24
-  const calculatedItems: { book: Book; x: number; width: number; isFlat: boolean }[] = []
+  const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean }[] = []
 
   for (const book of sorted) {
     const isExplicitFlat = book.layerMode === 'horizontal-stack'
@@ -205,6 +205,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     const bookH = calculateBookHeight(book.id)
     const flatLength = Math.min(210, Math.max(170, Math.round(bookH * 0.82)))
     const bookWidth = isExplicitFlat ? flatLength : spineW
+    const bookHeight = isExplicitFlat ? spineW : bookH
 
     let x = book.positionX
     if (x === undefined || x < 0) {
@@ -215,11 +216,12 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       book,
       x,
       width: bookWidth,
+      height: bookHeight,
       isFlat: isExplicitFlat,
     })
 
-    // Advance floor flow coordinate with snug 4px separation
-    currentFlowX = Math.max(currentFlowX, x + bookWidth + 4)
+    // Advance floor flow coordinate with snug 6px separation
+    currentFlowX = Math.max(currentFlowX, x + bookWidth + 6)
   }
 
   // Determine physical neighbor contact information
@@ -237,6 +239,8 @@ const positionedBooks = computed<PositionedBook[]>(() => {
         book: prev.book,
         distance,
         isFlat: prev.isFlat,
+        height: prev.height,
+        width: prev.width,
       }
     }
 
@@ -248,6 +252,8 @@ const positionedBooks = computed<PositionedBook[]>(() => {
         book: next.book,
         distance,
         isFlat: next.isFlat,
+        height: next.height,
+        width: next.width,
       }
     }
 
