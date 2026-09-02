@@ -17,16 +17,17 @@
         ref="shelfCanvas"
         class="relative min-h-[265px] w-full flex items-end z-10 pb-0.5"
       >
-        <!-- Live Ghost Drag Preview Overlay -->
+        <!-- Live Ghost Drag Preview Overlay (1:1 identical to settled placement) -->
         <div
-          v-if="dragIndicatorX !== null && store.activeDraggingBook"
+          v-if="dragIndicatorX !== null && ghostBook"
           class="absolute bottom-0 z-40 pointer-events-none transition-all duration-75 scale-[1.02]"
           :style="{ left: `${dragIndicatorX}px` }"
         >
           <BookSpine
-            :book="store.activeDraggingBook"
+            :book="ghostBook"
             :left-neighbor="ghostLeftNeighbor"
             :right-neighbor="ghostRightNeighbor"
+            :shelf-width="shelfWidth"
             :is-ghost="true"
           />
         </div>
@@ -44,6 +45,7 @@
             :book="item.book"
             :left-neighbor="item.leftNeighbor"
             :right-neighbor="item.rightNeighbor"
+            :shelf-width="shelfWidth"
             @select="handleSelectBook"
             @edit="handleEditBook"
           />
@@ -73,7 +75,7 @@
     </div>
 
     <!-- Solid Wooden Shelf Plank (The Physical Shelf) -->
-    <div class="relative h-7 w-full shelf-plank z-30 flex items-center justify-between px-4 sm:px-8">
+    <div class="relative h-7 w-full shelf-plank z-30 flex items-center justify-between px-3 sm:px-6">
       <!-- Left Shelf Bracket Details -->
       <div class="w-4 h-2 bg-black/40 rounded-sm"></div>
 
@@ -143,6 +145,10 @@ const shelfTrack = ref<HTMLElement | null>(null)
 const shelfCanvas = ref<HTMLElement | null>(null)
 const dragIndicatorX = ref<number | null>(null)
 
+const shelfWidth = computed(() => {
+  return shelfCanvas.value?.clientWidth || shelfTrack.value?.clientWidth || 900
+})
+
 interface PositionedBook {
   book: Book
   x: number
@@ -190,7 +196,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     currentFlowX = Math.max(currentFlowX, x + bookWidth + 6)
   }
 
-  const canvasW = shelfCanvas.value?.clientWidth || 900
+  const canvasW = shelfWidth.value
 
   // Pre-resolve isFlat status for books falling flat on open floor
   const preliminarySizings = calculatedItems.map(item => getBookSizing(item.book, undefined, canvasW))
@@ -268,11 +274,20 @@ const positionedBooks = computed<PositionedBook[]>(() => {
   return result
 })
 
+// Ghost book context that accurately reflects its live drag coordinate
+const ghostBook = computed<Book | null>(() => {
+  if (!store.activeDraggingBook || dragIndicatorX.value === null) return null
+  return {
+    ...store.activeDraggingBook,
+    positionX: dragIndicatorX.value,
+  }
+})
+
 // Ghost Neighbor Context during drag
 const ghostLeftNeighbor = computed<NeighborInfo | null>(() => {
   if (dragIndicatorX.value === null || !store.activeDraggingBook) return null
   const targetX = dragIndicatorX.value
-  const canvasW = shelfCanvas.value?.clientWidth || 900
+  const canvasW = shelfWidth.value
 
   const leftCandidates = positionedBooks.value.filter(
     p => p.book.id !== store.activeDraggingBook!.id && p.x + p.width <= targetX
@@ -295,7 +310,7 @@ const ghostLeftNeighbor = computed<NeighborInfo | null>(() => {
 const ghostRightNeighbor = computed<NeighborInfo | null>(() => {
   if (dragIndicatorX.value === null || !store.activeDraggingBook) return null
   const targetX = dragIndicatorX.value
-  const canvasW = shelfCanvas.value?.clientWidth || 900
+  const canvasW = shelfWidth.value
   const draggingW = store.activeDraggingBook.layerMode === 'horizontal-stack'
     ? calculateBookHeight(store.activeDraggingBook.id)
     : calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
@@ -325,7 +340,7 @@ const trailingButtonX = computed(() => {
 })
 
 const canFitNewBook = computed(() => {
-  const canvasW = shelfCanvas.value?.clientWidth || 900
+  const canvasW = shelfWidth.value
   return trailingButtonX.value + 48 <= canvasW
 })
 
@@ -335,12 +350,14 @@ function resolveNonOverlappingPosition(
   existingItems: PositionedBook[],
   draggingBookId?: string
 ): number {
-  const canvasW = shelfCanvas.value?.clientWidth || 900
+  const canvasW = shelfWidth.value
   const maxAllowedX = Math.max(0, canvasW - draggingW)
   
   let x = Math.max(0, Math.min(proposedX, maxAllowedX))
-  if (x < 14) {
+  if (x <= 16) {
     x = 0
+  } else if (x >= maxAllowedX - 16) {
+    x = maxAllowedX
   }
 
   const items = existingItems.filter(item => !draggingBookId || item.book.id !== draggingBookId)

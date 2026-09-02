@@ -153,6 +153,7 @@ const props = defineProps<{
   leftNeighbor?: NeighborInfo | null
   rightNeighbor?: NeighborInfo | null
   isGhost?: boolean
+  shelfWidth?: number
   physicsTransform?: PhysicsOverride | null
 }>()
 
@@ -163,7 +164,7 @@ const emit = defineEmits<{
 
 const store = useLibraryStore()
 
-const fallbackSizing = computed(() => getBookSizing(props.book, { left: props.leftNeighbor, right: props.rightNeighbor }))
+const fallbackSizing = computed(() => getBookSizing(props.book, { left: props.leftNeighbor, right: props.rightNeighbor }, props.shelfWidth))
 
 const isFlat = computed(() => {
   if (props.physicsTransform?.isFlat !== undefined) return props.physicsTransform.isFlat
