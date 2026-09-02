@@ -268,13 +268,20 @@ export const useLibraryStore = defineStore('library', () => {
     const targetBook = books.value.find(b => b.id === bookId)
     if (!targetBook) return
 
-    // If another book occupies this exact slot on target shelf, swap their slot indices
-    const existingBook = books.value.find(b => b.shelfId === targetShelfId && b.slotIndex === targetSlotIndex && b.id !== bookId)
-    if (existingBook) {
-      await updateBook(existingBook.id, { slotIndex: targetBook.slotIndex })
-    }
+    // Get current books on target shelf excluding the dragged book
+    const currentShelfBooks = books.value
+      .filter(b => b.shelfId === targetShelfId && b.id !== bookId)
+      .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
 
-    await updateBook(bookId, { shelfId: targetShelfId, slotIndex: targetSlotIndex })
+    // Insert targetBook at desired slot position
+    const insertIdx = Math.max(0, Math.min(targetSlotIndex, currentShelfBooks.length))
+    currentShelfBooks.splice(insertIdx, 0, targetBook)
+
+    // Re-assign continuous slot indices to all books on the shelf
+    for (let i = 0; i < currentShelfBooks.length; i++) {
+      const b = currentShelfBooks[i]
+      await updateBook(b.id, { shelfId: targetShelfId, slotIndex: i })
+    }
   }
 
   async function deleteBook(id: string) {
