@@ -13,7 +13,7 @@ export function hashString(str: string): number {
 }
 
 /**
- * Deterministic natural lean direction based on the book's UUID.
+ * Deterministic natural lean direction based on the book's UUID (used to break ties when both sides have support).
  */
 export function getNaturalLeanDirection(bookId: string): 'left' | 'right' {
   const hash = hashString(bookId || 'default-seed')
@@ -67,14 +67,17 @@ export interface NeighborInfo {
  * 1. Explicit Flat Mode: width = H, height = W, isFlat = true.
  * 2. Thick Volume Stability: Spine width > 45px always stands upright.
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
- * 4. Shelf Wall Leaning:
+ * 4. Context-Aware Lean Direction:
+ *    - Leans toward the side where physical support (neighbor or shelf wall) exists.
+ *    - Only randomizes via UUID when BOTH sides have available support to lean on.
+ * 5. Shelf Wall Leaning:
  *    - Left wall: Near left edge (X <= 28px) leans left (-5.5 deg).
  *    - Right wall: Near right edge (dist <= 28px) leans right (+5.5 deg).
- * 5. Flat Book Contact: Adjacent to a flat book (gap <= 12px) rests gently at 5.5 deg. If gap > 12px, falls flat on floor.
- * 6. Height-Aware Mutual Lean / A-Frame: When 2 books lean toward each other, the taller book leans more to meet the shorter book's top corner.
- * 7. Dynamic Height-Aware Gap-Spanning: Contact height is min(H, neighbor.height), so taller books lean more when resting on shorter neighbors.
- * 8. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
- * 9. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
+ * 6. Flat Book Contact: Adjacent to a flat book (gap <= 12px) rests gently at 5.5 deg. If gap > 12px, falls flat on floor.
+ * 7. Height-Aware Mutual Lean / A-Frame: When 2 books lean toward each other, the taller book leans more to meet the shorter book's top corner.
+ * 8. Dynamic Height-Aware Gap-Spanning: Contact height is min(H, neighbor.height), so taller books lean more when resting on shorter neighbors.
+ * 9. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
+ * 10. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
  */
 export function getBookSizing(
   book: Book,
@@ -126,18 +129,29 @@ export function getBookSizing(
     }
   }
 
-  // 4. Determine Lean Direction from UUID / preference
-  const leanDir = book.layerMode === 'leaning-left' 
-    ? 'left' 
-    : book.layerMode === 'leaning-right' 
-      ? 'right' 
-      : getNaturalLeanDirection(book.id)
-
   const posX = book.positionX ?? 0
   const isAgainstLeftWall = Boolean(book.positionX !== undefined && posX <= 28)
   const isAgainstRightWall = Boolean(
     shelfWidth !== undefined && book.positionX !== undefined && (shelfWidth - (posX + W) <= 28)
   )
+
+  const hasLeftSupport = isAgainstLeftWall || Boolean(neighbors?.left && neighbors.left.distance < H)
+  const hasRightSupport = isAgainstRightWall || Boolean(neighbors?.right && neighbors.right.distance < H)
+
+  // 4. Context-Aware Lean Direction: Lean toward available support; randomize only when both sides are supported
+  let leanDir: 'left' | 'right'
+  if (book.layerMode === 'leaning-left') {
+    leanDir = 'left'
+  } else if (book.layerMode === 'leaning-right') {
+    leanDir = 'right'
+  } else if (hasLeftSupport && !hasRightSupport) {
+    leanDir = 'left'
+  } else if (hasRightSupport && !hasLeftSupport) {
+    leanDir = 'right'
+  } else {
+    // Both sides have support (or neither) -> use UUID seed to break tie
+    leanDir = getNaturalLeanDirection(book.id)
+  }
 
   const neighbor = leanDir === 'right' ? neighbors?.right : neighbors?.left
 
