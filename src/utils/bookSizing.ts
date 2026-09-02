@@ -66,9 +66,13 @@ export interface NeighborInfo {
  * Computes individual book sizing according to the unified master physical specification:
  * 1. Explicit Flat Mode: width = H, height = W, isFlat = true.
  * 2. Thick Volume Stability: Spine width > 45px always stands upright (0 deg).
- * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
- * 4. Dynamic Leaning to Next Support: Leans at the exact angle to touch the next support (neighbor, arch, wall).
- * 5. Fall-to-Flat Rule: When no support exists within reach (gap >= H), falls flat on the floor in the open space.
+ * 3. Wall Support & Packed Upright:
+ *    - Sandwiched between 2 books -> stands upright (0 deg).
+ *    - Beside left wall with a right neighbor -> stands upright (0 deg).
+ *    - Beside right wall with a left neighbor -> stands upright (0 deg).
+ * 4. Outer Edge Leaning: Outer books at edge of a stack/wall fall flat outward into open space.
+ * 5. Dynamic Leaning to Next Support: Leans at the exact angle to touch the next support (neighbor, arch, wall).
+ * 6. Fall-to-Flat Rule: When no support exists within reach (gap >= H), falls flat on the floor in the open space.
  */
 export function getBookSizing(
   book: Book,
@@ -105,10 +109,19 @@ export function getBookSizing(
     }
   }
 
-  // 3. Packed Books (tight on both sides) -> Stand Upright
-  const hasTightLeft = Boolean(neighbors?.left && neighbors.left.distance <= 12 && !neighbors.left.isFlat)
-  const hasTightRight = Boolean(neighbors?.right && neighbors.right.distance <= 12 && !neighbors.right.isFlat)
-  if (hasTightLeft && hasTightRight) {
+  const posX = book.positionX ?? 0
+  const isBesideLeftWall = Boolean(book.positionX !== undefined && posX <= 8)
+
+  const distToRightWall = shelfWidth !== undefined && book.positionX !== undefined 
+    ? Math.max(0, shelfWidth - (posX + W)) 
+    : Infinity
+  const isBesideRightWall = Boolean(distToRightWall <= 8)
+
+  // 3. Packed Books & Wall-Sandwiched Books -> Stand Upright
+  const hasTightLeft = Boolean(neighbors?.left && neighbors.left.distance <= 16 && !neighbors.left.isFlat)
+  const hasTightRight = Boolean(neighbors?.right && neighbors.right.distance <= 16 && !neighbors.right.isFlat)
+
+  if ((hasTightLeft && hasTightRight) || (isBesideLeftWall && hasTightRight) || (isBesideRightWall && hasTightLeft)) {
     return {
       width: W,
       height: H,
@@ -120,12 +133,7 @@ export function getBookSizing(
     }
   }
 
-  const posX = book.positionX ?? 0
   const distToLeftWall = posX
-  const distToRightWall = shelfWidth !== undefined && book.positionX !== undefined 
-    ? Math.max(0, shelfWidth - (posX + W)) 
-    : Infinity
-
   const isWallReachLeft = distToLeftWall > 0 && distToLeftWall < H
   const isWallReachRight = distToRightWall > 0 && distToRightWall < H
 

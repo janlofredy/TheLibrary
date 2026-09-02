@@ -21,7 +21,7 @@
         <div
           v-if="dragIndicatorX !== null && ghostBook"
           class="absolute bottom-0 z-40 pointer-events-none transition-all duration-75 scale-[1.02]"
-          :style="{ left: `${dragIndicatorX}px` }"
+          :style="{ left: `${ghostRenderedX}px` }"
         >
           <BookSpine
             :book="ghostBook"
@@ -347,6 +347,34 @@ const ghostRightNeighbor = computed<NeighborInfo | null>(() => {
     width: closest.width,
     rotationDeg: sizing.rotationDeg,
   }
+})
+
+const ghostRenderedX = computed(() => {
+  if (dragIndicatorX.value === null || !store.activeDraggingBook) return 0
+  const rawX = dragIndicatorX.value
+  const canvasW = shelfWidth.value
+
+  const ghostBookObj: Book = {
+    ...store.activeDraggingBook,
+    positionX: rawX,
+  }
+  const s = getBookSizing(ghostBookObj, { left: ghostLeftNeighbor.value, right: ghostRightNeighbor.value }, canvasW)
+
+  if (s.isFlat && store.activeDraggingBook.layerMode !== 'horizontal-stack') {
+    const flatW = s.width
+    const spineW = calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
+    const fellLeft = Boolean(ghostRightNeighbor.value && !ghostLeftNeighbor.value)
+    if (fellLeft) {
+      const baseRight = rawX + spineW
+      return Math.max(0, baseRight - flatW)
+    } else {
+      if (rawX + flatW > canvasW) {
+        return Math.max(0, canvasW - flatW)
+      }
+    }
+  }
+
+  return rawX
 })
 
 const trailingButtonX = computed(() => {
