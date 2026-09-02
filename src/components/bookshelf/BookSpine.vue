@@ -1,13 +1,13 @@
 <template>
   <div
     class="relative select-none cursor-pointer group transition-all duration-300 ease-out flex-shrink-0"
-    :style="containerStyle"
+    :style="containerWrapperStyle"
     @click="handleClick"
     @contextmenu.prevent="handleRightClick"
   >
-    <!-- 3D Book Spine Body -->
+    <!-- 3D Book Spine Body (Transforms inside its dedicated slot) -->
     <div
-      class="relative h-full w-full rounded-t-sm flex flex-col justify-between items-center py-3 px-1 overflow-hidden spine-3d-lighting transition-transform duration-300 ease-out group-hover:-translate-y-2 group-hover:scale-[1.02]"
+      class="relative h-full w-full rounded-t-sm flex flex-col justify-between items-center py-3 px-1 overflow-hidden spine-3d-lighting transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:scale-[1.02]"
       :class="[finishClass, `font-${book.titleFont}-book`]"
       :style="spineStyle"
     >
@@ -97,19 +97,39 @@ const emit = defineEmits<{
 
 const sizing = computed(() => getBookSizing(props.book))
 
-const containerStyle = computed(() => {
-  const { width, height, rotationDeg } = sizing.value
-  let transform = ''
+const containerWrapperStyle = computed(() => {
+  const { width, height, rotationDeg, leanOffset } = sizing.value
   
-  if (props.book.layerMode === 'leaning-left' || props.book.layerMode === 'leaning-right') {
-    transform = `rotate(${rotationDeg}deg) translateY(4px)`
+  let marginLeft = '0px'
+  let marginRight = '0px'
+  let transform = ''
+  let transformOrigin = 'bottom center'
+  let zIndex = 10
+
+  if (props.book.layerMode === 'leaning-left') {
+    // Lean left: top swings left, base pivots on bottom right
+    marginLeft = `${Math.max(4, leanOffset - 2)}px`
+    marginRight = '2px'
+    transform = `rotate(${rotationDeg}deg) translateY(2px)`
+    transformOrigin = 'bottom right'
+    zIndex = 15
+  } else if (props.book.layerMode === 'leaning-right') {
+    // Lean right: top swings right, base pivots on bottom left
+    marginRight = `${Math.max(4, leanOffset - 2)}px`
+    marginLeft = '2px'
+    transform = `rotate(${rotationDeg}deg) translateY(2px)`
+    transformOrigin = 'bottom left'
+    zIndex = 15
   }
 
   return {
     width: `${width}px`,
     height: `${height}px`,
+    marginLeft,
+    marginRight,
     transform,
-    transformOrigin: props.book.layerMode === 'leaning-left' ? 'bottom left' : 'bottom right',
+    transformOrigin,
+    zIndex,
   }
 })
 

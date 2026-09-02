@@ -66,5 +66,6 @@ export interface BookSizing {
   width: number
   height: number
   rotationDeg: number
+  leanOffset: number
   topEdgeDetail: boolean
 }
