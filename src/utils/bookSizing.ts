@@ -63,12 +63,12 @@ export interface NeighborInfo {
 }
 
 /**
- * Computes full sizing according to the formal physics specification:
- * 1. Slim volumes (width <= 45px) lean automatically at an authentic library angle (5.4 deg).
- * 2. Sandwiched between two books (distance <= 8px on both sides) -> stands upright (0 deg).
- * 3. Leaning towards an open side (distance > 45px or no neighbor) -> falls over and lies flat on the floor.
- * 4. Leaning towards a neighbor (standing, leaning, or flat within 45px) -> leans at 5.4 deg with anti-clipping floorLift.
- * 5. Leaning towards left shelf wall (positionX <= 8) -> leans at -5.4 deg against the wall.
+ * Computes full sizing according to the formal first-principles physics specification:
+ * Mode 1: Tip-to-Side Contact (Standing neighbor).
+ * Mode 2: Surface-to-Surface Contact (Parallel domino cascade).
+ * Mode 3: Side-to-Tip Contact (Flat book neighbor).
+ * Mode 4: Tip-to-Wall Contact (Left shelf wall).
+ * Mode 5: Open Void -> Fall-to-Flat.
  */
 export function getBookSizing(
   book: Book,
@@ -78,7 +78,7 @@ export function getBookSizing(
   const fullBookHeight = calculateBookHeight(book.id)
   const flatBookLength = fullBookHeight
 
-  // 1. Explicit Horizontal Flat Book Mode
+  // Explicit Horizontal Flat Book Mode
   if (book.layerMode === 'horizontal-stack') {
     return {
       width: flatBookLength,
@@ -91,7 +91,7 @@ export function getBookSizing(
     }
   }
 
-  // 2. Thick Volume Check (Spine width > 45px stands firmly upright)
+  // Thick Volume Check (Spine width > 45px stands firmly upright)
   const canTilt = spineThickness <= 45
   if (!canTilt) {
     return {
@@ -105,7 +105,7 @@ export function getBookSizing(
     }
   }
 
-  // 3. Sandwiched Condition: If book has tight non-flat neighbors on both left and right (distance <= 8px), it stands upright!
+  // Sandwich Compression Check: Flanked tightly on both sides (distance <= 8px with non-flat books)
   const hasTightLeft = Boolean(neighbors?.left && neighbors.left.distance <= 8 && !neighbors.left.isFlat)
   const hasTightRight = Boolean(neighbors?.right && neighbors.right.distance <= 8 && !neighbors.right.isFlat)
 
@@ -121,7 +121,7 @@ export function getBookSizing(
     }
   }
 
-  // 4. Determine Lean Direction (Explicit preference or automatic deterministic UUID direction)
+  // Determine Lean Direction (explicit preference or deterministic UUID seed)
   let leanDir: 'left' | 'right'
   if (book.layerMode === 'leaning-left') {
     leanDir = 'left'
@@ -131,17 +131,14 @@ export function getBookSizing(
     leanDir = getNaturalLeanDirection(book.id)
   }
 
-  const BASE_LEAN_ANGLE = 5.4
-  const rad = BASE_LEAN_ANGLE * (Math.PI / 180)
-  const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
+  const BASE_NATURAL_ANGLE = 5.4
 
-  // 5. Evaluate Support on the Lean Side
+  // Evaluate Contact Modes on the Lean Side
   if (leanDir === 'right') {
     const neighbor = neighbors?.right
-    const hasSupport = Boolean(neighbor && neighbor.distance <= 45)
 
-    if (!hasSupport) {
-      // Unsupported on the right: falls flat on the shelf floor
+    // Mode 5: Open Void / Unsupported on the right (no neighbor or distance > 45px) -> Fall-to-Flat
+    if (!neighbor || neighbor.distance > 45) {
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -153,11 +150,58 @@ export function getBookSizing(
       }
     }
 
-    // Supported on the right (by standing book, leaning book, or flat book within 45px)
+    // Mode 3: Side-to-Tip Contact with Flat Book Neighbor (distance <= 45px)
+    if (neighbor.isFlat) {
+      const angleRad = BASE_NATURAL_ANGLE * (Math.PI / 180)
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: BASE_NATURAL_ANGLE,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    // Mode 2: Surface-to-Surface Domino Cascade (tight neighbor distance <= 8px also leaning right)
+    const neighborAngle = neighbor.rotationDeg ?? 0
+    if (neighborAngle > 0 && neighbor.distance <= 8) {
+      const angleDeg = neighborAngle
+      const angleRad = (angleDeg * Math.PI) / 180
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: angleDeg,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    // Mode 1: Tip-to-Side Contact (Standing neighbor within 45px)
+    if (neighbor.distance < 2) {
+      // Flush against upright neighbor -> stands upright
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: 0,
+        floorLift: 0,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    const angleRad = BASE_NATURAL_ANGLE * (Math.PI / 180)
+    const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
     return {
       width: spineThickness,
       height: fullBookHeight,
-      rotationDeg: BASE_LEAN_ANGLE,
+      rotationDeg: BASE_NATURAL_ANGLE,
       floorLift,
       canTilt: true,
       isFlat: false,
@@ -168,12 +212,14 @@ export function getBookSizing(
     const neighbor = neighbors?.left
     const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
 
+    // Mode 4: Tip-to-Wall Contact (Vertical Shelf Frame)
     if (isAgainstLeftWall) {
-      // Leaning against left shelf wall
+      const angleRad = BASE_NATURAL_ANGLE * (Math.PI / 180)
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
       return {
         width: spineThickness,
         height: fullBookHeight,
-        rotationDeg: -BASE_LEAN_ANGLE,
+        rotationDeg: -BASE_NATURAL_ANGLE,
         floorLift,
         canTilt: true,
         isFlat: false,
@@ -181,10 +227,8 @@ export function getBookSizing(
       }
     }
 
-    const hasSupport = Boolean(neighbor && neighbor.distance <= 45)
-
-    if (!hasSupport) {
-      // Unsupported on the left: falls flat on the shelf floor
+    // Mode 5: Open Void / Unsupported on the left (no neighbor or distance > 45px) -> Fall-to-Flat
+    if (!neighbor || neighbor.distance > 45) {
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -196,11 +240,57 @@ export function getBookSizing(
       }
     }
 
-    // Supported on the left
+    // Mode 3: Side-to-Tip Contact with Flat Book Neighbor (distance <= 45px)
+    if (neighbor.isFlat) {
+      const angleRad = BASE_NATURAL_ANGLE * (Math.PI / 180)
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: -BASE_NATURAL_ANGLE,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    // Mode 2: Surface-to-Surface Domino Cascade (tight neighbor distance <= 8px also leaning left)
+    const neighborAngle = neighbor.rotationDeg ?? 0
+    if (neighborAngle < 0 && neighbor.distance <= 8) {
+      const angleDeg = neighborAngle
+      const angleRad = (Math.abs(angleDeg) * Math.PI) / 180
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: angleDeg,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    // Mode 1: Tip-to-Side Contact (Standing neighbor within 45px)
+    if (neighbor.distance < 2) {
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: 0,
+        floorLift: 0,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    const angleRad = BASE_NATURAL_ANGLE * (Math.PI / 180)
+    const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
     return {
       width: spineThickness,
       height: fullBookHeight,
-      rotationDeg: -BASE_LEAN_ANGLE,
+      rotationDeg: -BASE_NATURAL_ANGLE,
       floorLift,
       canTilt: true,
       isFlat: false,
