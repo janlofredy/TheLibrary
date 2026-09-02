@@ -63,22 +63,12 @@ export interface NeighborInfo {
 }
 
 /**
- * Calculates the exact trigonometric lean angle required for a book of height H and width W
- * to rotate around its bottom corner and span the exact gap to hit a standing neighbor.
- * Solves: H * sin(theta) = gap
- */
-export function computePreciseLeanAngle(gap: number, H: number): number {
-  if (gap < 2) return 0
-  const sinTheta = Math.min(0.42, gap / H) // Bound to natural library lean <= 25 deg
-  return Number(((Math.asin(sinTheta) * 180) / Math.PI).toFixed(1))
-}
-
-/**
  * Computes full sizing according to the formal physics specification:
- * 1. Flat Books: Adjacent standing books lean at a gentle, authentic resting tilt (6.5 deg) on the flat book's corner. If gap > 14px, the book falls flat on the floor.
- * 2. Standing Books: Leaning against a standing book calculates exact top contact: theta = arcsin(gap / H).
- * 3. Cascading Domino Physics: Adopts neighbor's lean angle for parallel stacks or spans total gap.
- * 4. Open spaces (gap >= flatBookLength or gap > 14px for flat neighbor) safely fall flat on the shelf floor.
+ * 1. Slim volumes (width <= 45px) lean automatically at an authentic library angle (5.4 deg).
+ * 2. Sandwiched between two books (distance <= 8px on both sides) -> stands upright (0 deg).
+ * 3. Leaning towards an open side (distance > 45px or no neighbor) -> falls over and lies flat on the floor.
+ * 4. Leaning towards a neighbor (standing, leaning, or flat within 45px) -> leans at 5.4 deg with anti-clipping floorLift.
+ * 5. Leaning towards left shelf wall (positionX <= 8) -> leans at -5.4 deg against the wall.
  */
 export function getBookSizing(
   book: Book,
@@ -141,12 +131,17 @@ export function getBookSizing(
     leanDir = getNaturalLeanDirection(book.id)
   }
 
-  // 5. Evaluate Support & Height on the Lean Side
+  const BASE_LEAN_ANGLE = 5.4
+  const rad = BASE_LEAN_ANGLE * (Math.PI / 180)
+  const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
+
+  // 5. Evaluate Support on the Lean Side
   if (leanDir === 'right') {
     const neighbor = neighbors?.right
-    
-    // If no neighbor on the right or gap is wider than the book's full height -> falls flat cleanly
-    if (!neighbor || neighbor.distance >= flatBookLength) {
+    const hasSupport = Boolean(neighbor && neighbor.distance <= 45)
+
+    if (!hasSupport) {
+      // Unsupported on the right: falls flat on the shelf floor
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -158,90 +153,12 @@ export function getBookSizing(
       }
     }
 
-    // Leaning on a flat book to the right
-    if (neighbor.isFlat) {
-      const gap = Math.max(0, neighbor.distance)
-
-      // If gap is too large to lean on the adjacent flat book (> 14px), it falls flat
-      if (gap > 14) {
-        return {
-          width: flatBookLength,
-          height: spineThickness,
-          rotationDeg: 0,
-          floorLift: 0,
-          canTilt: true,
-          isFlat: true,
-          topEdgeDetail: true,
-        }
-      }
-
-      // Authentic resting angle on flat book's corner
-      const angleDeg = gap < 2 ? 6.0 : 7.5
-
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: angleDeg,
-        floorLift: 0,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    // Standing or Leaning neighbor on the right
-    const neighborAngle = neighbor.rotationDeg ?? 0
-
-    if (neighborAngle > 0) {
-      // Neighbor is ALSO leaning to the right! (Cascading domino stack)
-      if (neighbor.distance <= 8) {
-        return {
-          width: spineThickness,
-          height: fullBookHeight,
-          rotationDeg: neighborAngle,
-          floorLift: 0,
-          canTilt: true,
-          isFlat: false,
-          topEdgeDetail: false,
-        }
-      }
-
-      const neighborTopShift = neighbor.height * Math.sin((neighborAngle * Math.PI) / 180)
-      const totalGap = neighbor.distance + neighborTopShift
-      const angleDeg = computePreciseLeanAngle(totalGap, fullBookHeight)
-
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: angleDeg,
-        floorLift: 0,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    // Standing upright neighbor on right
-    const gap = neighbor.distance
-    if (gap < 2) {
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: 0,
-        floorLift: 0,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    const angleDeg = computePreciseLeanAngle(gap, fullBookHeight)
-
+    // Supported on the right (by standing book, leaning book, or flat book within 45px)
     return {
       width: spineThickness,
       height: fullBookHeight,
-      rotationDeg: angleDeg,
-      floorLift: 0,
+      rotationDeg: BASE_LEAN_ANGLE,
+      floorLift,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,
@@ -250,20 +167,24 @@ export function getBookSizing(
     // Leaning Left
     const neighbor = neighbors?.left
     const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
-    
+
     if (isAgainstLeftWall) {
+      // Leaning against left shelf wall
       return {
         width: spineThickness,
         height: fullBookHeight,
-        rotationDeg: -6.5,
-        floorLift: 0,
+        rotationDeg: -BASE_LEAN_ANGLE,
+        floorLift,
         canTilt: true,
         isFlat: false,
         topEdgeDetail: false,
       }
     }
-    
-    if (!neighbor || neighbor.distance >= flatBookLength) {
+
+    const hasSupport = Boolean(neighbor && neighbor.distance <= 45)
+
+    if (!hasSupport) {
+      // Unsupported on the left: falls flat on the shelf floor
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -275,87 +196,12 @@ export function getBookSizing(
       }
     }
 
-    // Leaning on a flat book to the left
-    if (neighbor.isFlat) {
-      const gap = Math.max(0, neighbor.distance)
-
-      if (gap > 14) {
-        return {
-          width: flatBookLength,
-          height: spineThickness,
-          rotationDeg: 0,
-          floorLift: 0,
-          canTilt: true,
-          isFlat: true,
-          topEdgeDetail: true,
-        }
-      }
-
-      const angleDeg = gap < 2 ? 6.0 : 7.5
-
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: -angleDeg,
-        floorLift: 0,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    // Standing or Leaning neighbor on the left
-    const neighborAngle = neighbor.rotationDeg ?? 0
-
-    if (neighborAngle < 0) {
-      // Neighbor is ALSO leaning to the left! (Cascading domino stack)
-      if (neighbor.distance <= 8) {
-        return {
-          width: spineThickness,
-          height: fullBookHeight,
-          rotationDeg: neighborAngle,
-          floorLift: 0,
-          canTilt: true,
-          isFlat: false,
-          topEdgeDetail: false,
-        }
-      }
-
-      const neighborTopShift = neighbor.height * Math.sin((Math.abs(neighborAngle) * Math.PI) / 180)
-      const totalGap = neighbor.distance + neighborTopShift
-      const angleDeg = computePreciseLeanAngle(totalGap, fullBookHeight)
-
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: -angleDeg,
-        floorLift: 0,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    const gap = neighbor.distance
-    if (gap < 2) {
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: 0,
-        floorLift: 0,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    const angleDeg = computePreciseLeanAngle(gap, fullBookHeight)
-
+    // Supported on the left
     return {
       width: spineThickness,
       height: fullBookHeight,
-      rotationDeg: -angleDeg,
-      floorLift: 0,
+      rotationDeg: -BASE_LEAN_ANGLE,
+      floorLift,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,
