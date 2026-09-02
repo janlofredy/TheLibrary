@@ -67,17 +67,14 @@ export interface NeighborInfo {
  * 1. Explicit Flat Mode: width = H, height = W, isFlat = true.
  * 2. Thick Volume Stability: Spine width > 45px always stands upright.
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
- * 4. Context-Aware Lean Direction:
- *    - Leans toward the side where physical support (neighbor or shelf wall) exists.
- *    - Only randomizes via UUID when BOTH sides have available support to lean on.
- * 5. Shelf Wall Leaning:
- *    - Left wall: Near left edge (X <= 28px) leans left (-5.5 deg).
- *    - Right wall: Near right edge (dist <= 28px) leans right (+5.5 deg).
- * 6. Flat Book Contact: Adjacent to a flat book (gap <= 12px) rests gently at 5.5 deg. If gap > 12px, falls flat on floor.
- * 7. Height-Aware Mutual Lean / A-Frame: When 2 books lean toward each other, the taller book leans more to meet the shorter book's top corner.
- * 8. Dynamic Height-Aware Gap-Spanning: Contact height is min(H, neighbor.height), so taller books lean more when resting on shorter neighbors.
- * 9. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
- * 10. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
+ * 4. Wall Hugging: A book placed flush against a wall (gap <= 8px) stands firmly upright without clipping through the wall.
+ * 5. Shelf Wall Leaning: A book with a gap (8px < gap <= 35px) to a wall tilts to touch the wall frame with its top corner.
+ * 6. Context-Aware Lean Direction: Leans toward the side where physical support (neighbor or shelf wall) exists.
+ * 7. Flat Book Contact: Adjacent to a flat book (gap <= 12px) rests gently at 5.5 deg. If gap > 12px, falls flat on floor.
+ * 8. Height-Aware Mutual Lean / A-Frame: When 2 books lean toward each other, the taller book leans more to meet the shorter book's top corner.
+ * 9. Dynamic Height-Aware Gap-Spanning: Contact height is min(H, neighbor.height), so taller books lean more when resting on shorter neighbors.
+ * 10. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
+ * 11. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
  */
 export function getBookSizing(
   book: Book,
@@ -130,13 +127,41 @@ export function getBookSizing(
   }
 
   const posX = book.positionX ?? 0
-  const isAgainstLeftWall = Boolean(book.positionX !== undefined && posX <= 28)
-  const isAgainstRightWall = Boolean(
-    shelfWidth !== undefined && book.positionX !== undefined && (shelfWidth - (posX + W) <= 28)
-  )
+  const isFlushLeftWall = Boolean(book.positionX !== undefined && posX <= 8)
+  const isGapLeftWall = Boolean(book.positionX !== undefined && posX > 8 && posX <= 35)
 
-  const hasLeftSupport = isAgainstLeftWall || Boolean(neighbors?.left && neighbors.left.distance < H)
-  const hasRightSupport = isAgainstRightWall || Boolean(neighbors?.right && neighbors.right.distance < H)
+  const distToRightWall = shelfWidth !== undefined && book.positionX !== undefined 
+    ? Math.max(0, shelfWidth - (posX + W)) 
+    : Infinity
+  const isFlushRightWall = Boolean(distToRightWall <= 8)
+  const isGapRightWall = Boolean(distToRightWall > 8 && distToRightWall <= 35)
+
+  // Wall hugging books stand upright (cannot lean through the wall)
+  if (isFlushLeftWall && (!neighbors?.right || neighbors.right.distance > 12)) {
+    return {
+      width: W,
+      height: H,
+      rotationDeg: 0,
+      floorLift: 0,
+      canTilt: true,
+      isFlat: false,
+      topEdgeDetail: false,
+    }
+  }
+  if (isFlushRightWall && (!neighbors?.left || neighbors.left.distance > 12)) {
+    return {
+      width: W,
+      height: H,
+      rotationDeg: 0,
+      floorLift: 0,
+      canTilt: true,
+      isFlat: false,
+      topEdgeDetail: false,
+    }
+  }
+
+  const hasLeftSupport = isFlushLeftWall || isGapLeftWall || Boolean(neighbors?.left && neighbors.left.distance < H)
+  const hasRightSupport = isFlushRightWall || isGapRightWall || Boolean(neighbors?.right && neighbors.right.distance < H)
 
   // 4. Context-Aware Lean Direction: Lean toward available support; randomize only when both sides are supported
   let leanDir: 'left' | 'right'
@@ -149,34 +174,37 @@ export function getBookSizing(
   } else if (hasRightSupport && !hasLeftSupport) {
     leanDir = 'right'
   } else {
-    // Both sides have support (or neither) -> use UUID seed to break tie
     leanDir = getNaturalLeanDirection(book.id)
   }
 
   const neighbor = leanDir === 'right' ? neighbors?.right : neighbors?.left
 
-  // 5. Left Shelf Wall Contact
-  if (leanDir === 'left' && isAgainstLeftWall && (!neighbors?.left || neighbors.left.distance > 12)) {
-    const rad = (5.5 * Math.PI) / 180
+  // 5. Left Shelf Wall Leaning (across gap)
+  if (leanDir === 'left' && isGapLeftWall && (!neighbors?.left || neighbors.left.distance > 12)) {
+    const sinTheta = Math.min(0.20, posX / H)
+    const angleRad = Math.asin(sinTheta)
+    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
     return {
       width: W,
       height: H,
-      rotationDeg: -5.5,
-      floorLift: Math.ceil(W * Math.sin(rad)) + 1,
+      rotationDeg: -angleDeg,
+      floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,
     }
   }
 
-  // 6. Right Shelf Wall Contact
-  if (leanDir === 'right' && isAgainstRightWall && (!neighbors?.right || neighbors.right.distance > 12)) {
-    const rad = (5.5 * Math.PI) / 180
+  // 6. Right Shelf Wall Leaning (across gap)
+  if (leanDir === 'right' && isGapRightWall && (!neighbors?.right || neighbors.right.distance > 12)) {
+    const sinTheta = Math.min(0.20, distToRightWall / H)
+    const angleRad = Math.asin(sinTheta)
+    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
     return {
       width: W,
       height: H,
-      rotationDeg: 5.5,
-      floorLift: Math.ceil(W * Math.sin(rad)) + 1,
+      rotationDeg: angleDeg,
+      floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,

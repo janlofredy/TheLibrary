@@ -353,43 +353,53 @@ function resolveNonOverlappingPosition(
   const canvasW = shelfWidth.value
   const maxAllowedX = Math.max(0, canvasW - draggingW)
   
-  let x = Math.max(0, Math.min(proposedX, maxAllowedX))
-  if (x <= 16) {
-    x = 0
-  } else if (x >= maxAllowedX - 16) {
-    x = maxAllowedX
-  }
-
   const items = existingItems.filter(item => !draggingBookId || item.book.id !== draggingBookId)
-  if (items.length === 0) return x
-
-  // Check if proposed x intersects any existing book base
-  const overlapping = items.find(item => x < item.x + item.width && x + draggingW > item.x)
-  if (!overlapping) return x
-
-  // Find candidate snap coordinates (flush left or flush right)
-  const snapLeft = Math.max(0, overlapping.x - draggingW)
-  const snapRight = Math.min(maxAllowedX, overlapping.x + overlapping.width)
-
-  const leftCollides = items.some(item => item.book.id !== overlapping.book.id && snapLeft < item.x + item.width && snapLeft + draggingW > item.x)
-  const rightCollides = items.some(item => item.book.id !== overlapping.book.id && snapRight < item.x + item.width && snapRight + draggingW > item.x)
-
-  if (!leftCollides && !rightCollides) {
-    const distLeft = Math.abs(snapLeft - proposedX)
-    const distRight = Math.abs(snapRight - proposedX)
-    return distLeft <= distRight ? snapLeft : snapRight
+  if (items.length === 0) {
+    if (proposedX <= 16) return 0
+    if (proposedX >= maxAllowedX - 16) return maxAllowedX
+    return Math.max(0, Math.min(proposedX, maxAllowedX))
   }
 
-  if (!leftCollides) return snapLeft
-  if (!rightCollides) return snapRight
+  function isValid(xCoord: number): boolean {
+    if (xCoord < 0 || xCoord > maxAllowedX) return false
+    return !items.some(item => xCoord < item.x + item.width && xCoord + draggingW > item.x)
+  }
 
-  // Search for nearest free gap across the shelf
-  let bestX = snapRight
+  // 1. Check if magnetic snap to left wall (0) or right wall (maxAllowedX) is valid
+  if (proposedX <= 16 && isValid(0)) {
+    return 0
+  }
+  if (proposedX >= maxAllowedX - 16 && isValid(maxAllowedX)) {
+    return maxAllowedX
+  }
+
+  const clampedX = Math.max(0, Math.min(proposedX, maxAllowedX))
+  if (isValid(clampedX)) {
+    return clampedX
+  }
+
+  // 2. Clamped position collides -> test candidate docking positions
+  const overlapping = items.find(item => clampedX < item.x + item.width && clampedX + draggingW > item.x)
+  if (overlapping) {
+    const snapLeft = overlapping.x - draggingW
+    const snapRight = overlapping.x + overlapping.width
+
+    const leftValid = isValid(snapLeft)
+    const rightValid = isValid(snapRight)
+
+    if (leftValid && rightValid) {
+      return Math.abs(snapLeft - proposedX) <= Math.abs(snapRight - proposedX) ? snapLeft : snapRight
+    }
+    if (leftValid) return snapLeft
+    if (rightValid) return snapRight
+  }
+
+  // 3. Fallback: Search all open intervals across the shelf for the closest valid spot
+  let bestX = clampedX
   let minDiff = Infinity
 
-  for (let cand = 0; cand <= maxAllowedX; cand += 4) {
-    const collides = items.some(item => cand < item.x + item.width && cand + draggingW > item.x)
-    if (!collides) {
+  for (let cand = 0; cand <= maxAllowedX; cand += 2) {
+    if (isValid(cand)) {
       const diff = Math.abs(cand - proposedX)
       if (diff < minDiff) {
         minDiff = diff
