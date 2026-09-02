@@ -63,7 +63,11 @@ export interface NeighborInfo {
 }
 
 /**
- * Computes individual book sizing given its calculated cluster rotation.
+ * Computes individual book sizing according to physical bookshelf mechanics:
+ * 1. Packed Books: Books placed right next to each other (gap <= 12px) support each other and stand firmly UPRIGHT without lean (0 deg).
+ * 2. Gap Leaning: A book with an open gap (12px < gap <= 35px) to a neighboring book or wall tilts (5.5 deg) to lean against it.
+ * 3. Open Unsupported Books: A book with no neighbor within 35px falls flat on the wooden floor (isFlat = true).
+ * 4. Thick Volumes: Spine width > 45px always stands upright.
  */
 export function getBookSizing(
   book: Book,
@@ -100,42 +104,16 @@ export function getBookSizing(
     }
   }
 
-  // If rotationDeg is explicitly resolved by the cluster solver
   const BASE_ANGLE = 5.5
   const angleRad = (BASE_ANGLE * Math.PI) / 180
   const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
-  // Check left wall
-  const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 12)
-  const hasLeftNeighbor = Boolean(neighbors?.left && neighbors.left.distance <= 20)
-  const hasRightNeighbor = Boolean(neighbors?.right && neighbors.right.distance <= 20)
+  const hasTightLeft = Boolean(neighbors?.left && neighbors.left.distance <= 12 && !neighbors.left.isFlat)
+  const hasTightRight = Boolean(neighbors?.right && neighbors.right.distance <= 12 && !neighbors.right.isFlat)
+  const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
 
-  // Sandwiched between two books -> stands upright
-  if ((isAgainstLeftWall || hasLeftNeighbor) && hasRightNeighbor) {
-    // If neighbor to the right is also leaning left, lean left together
-    if (neighbors?.right?.rotationDeg && neighbors.right.rotationDeg < 0) {
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: -BASE_ANGLE,
-        floorLift,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-    // If neighbor to the left is leaning right, lean right together
-    if (neighbors?.left?.rotationDeg && neighbors.left.rotationDeg > 0) {
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: BASE_ANGLE,
-        floorLift,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
+  // 1. Packed books touching neighbors side-by-side -> stand firmly UPRIGHT without lean
+  if (hasTightLeft || hasTightRight) {
     return {
       width: spineThickness,
       height: fullBookHeight,
@@ -147,8 +125,11 @@ export function getBookSizing(
     }
   }
 
-  // Supported on left (wall or book)
-  if (isAgainstLeftWall || hasLeftNeighbor) {
+  // 2. Leaning across a gap (12px < distance <= 35px) towards an adjacent book or wall
+  const hasGapLeft = Boolean(neighbors?.left && neighbors.left.distance > 12 && neighbors.left.distance <= 35)
+  const hasGapRight = Boolean(neighbors?.right && neighbors.right.distance > 12 && neighbors.right.distance <= 35)
+
+  if (isAgainstLeftWall) {
     return {
       width: spineThickness,
       height: fullBookHeight,
@@ -160,8 +141,19 @@ export function getBookSizing(
     }
   }
 
-  // Supported on right
-  if (hasRightNeighbor) {
+  if (hasGapLeft) {
+    return {
+      width: spineThickness,
+      height: fullBookHeight,
+      rotationDeg: -BASE_ANGLE,
+      floorLift,
+      canTilt: true,
+      isFlat: false,
+      topEdgeDetail: false,
+    }
+  }
+
+  if (hasGapRight) {
     return {
       width: spineThickness,
       height: fullBookHeight,
@@ -173,7 +165,7 @@ export function getBookSizing(
     }
   }
 
-  // Unsupported isolated volume -> falls flat
+  // 3. Unsupported solitary volume -> falls flat on the shelf floor
   return {
     width: flatBookLength,
     height: spineThickness,

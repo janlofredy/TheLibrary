@@ -131,7 +131,7 @@
 import { ref, computed } from 'vue'
 import type { Shelf, Book } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
-import { calculateSpineWidth, calculateBookHeight, getBookSizing, getNaturalLeanDirection, type NeighborInfo } from '@/utils/bookSizing'
+import { calculateSpineWidth, calculateBookHeight, getBookSizing, type NeighborInfo } from '@/utils/bookSizing'
 import BookSpine from './BookSpine.vue'
 
 const props = defineProps<{
@@ -237,65 +237,6 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       leftNeighbor,
       rightNeighbor,
     })
-  }
-
-  // Cluster Domino Solver: Assigns uniform lean angles to touching groups, eliminating X scissor collisions
-  const clusterAngles = new Array(result.length).fill(0)
-
-  let clusterStart = 0
-  while (clusterStart < result.length) {
-    let clusterEnd = clusterStart
-    while (
-      clusterEnd < result.length - 1 &&
-      result[clusterEnd + 1].x - (result[clusterEnd].x + result[clusterEnd].width) <= 16
-    ) {
-      clusterEnd++
-    }
-
-    // Evaluate cluster boundary anchors
-    const firstBook = result[clusterStart]
-    const lastBook = result[clusterEnd]
-
-    const hasLeftWall = firstBook.x <= 12
-    const hasLeftThick = clusterStart > 0 && (result[clusterStart - 1].width > 45 || result[clusterStart - 1].isFlat) && (firstBook.x - (result[clusterStart - 1].x + result[clusterStart - 1].width) <= 16)
-    const hasLeftAnchor = hasLeftWall || hasLeftThick
-
-    const hasRightThick = clusterEnd < result.length - 1 && (result[clusterEnd + 1].width > 45 || result[clusterEnd + 1].isFlat) && (result[clusterEnd + 1].x - (lastBook.x + lastBook.width) <= 16)
-    const hasRightAnchor = hasRightThick
-
-    let targetAngle = 0
-    if (hasLeftAnchor && hasRightAnchor) {
-      // Compressed between two anchors -> stand upright
-      targetAngle = 0
-    } else if (hasLeftAnchor) {
-      // Lean left against left anchor
-      targetAngle = -5.5
-    } else if (hasRightAnchor) {
-      // Lean right against right anchor
-      targetAngle = 5.5
-    } else {
-      // Free cluster -> use first book's natural direction
-      const dir = getNaturalLeanDirection(firstBook.book.id)
-      targetAngle = dir === 'left' ? -5.5 : 5.5
-    }
-
-    for (let i = clusterStart; i <= clusterEnd; i++) {
-      if (result[i].width <= 45 && !result[i].isFlat) {
-        clusterAngles[i] = targetAngle
-      }
-    }
-
-    clusterStart = clusterEnd + 1
-  }
-
-  // Assign resolved cluster angles to neighbors
-  for (let i = 0; i < result.length; i++) {
-    if (result[i].leftNeighbor) {
-      result[i].leftNeighbor!.rotationDeg = clusterAngles[i - 1]
-    }
-    if (result[i].rightNeighbor) {
-      result[i].rightNeighbor!.rotationDeg = clusterAngles[i + 1]
-    }
   }
 
   return result
