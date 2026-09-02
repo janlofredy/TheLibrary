@@ -70,7 +70,9 @@ export interface NeighborInfo {
  *    - Sandwiched between 2 books -> stands upright (0 deg).
  *    - Beside left wall with a right neighbor -> stands upright (0 deg).
  *    - Beside right wall with a left neighbor -> stands upright (0 deg).
- * 4. Outer Edge Leaning: Outer books at edge of a stack/wall fall flat outward into open space.
+ * 4. Outer Edge Leaning:
+ *    - Outer book next to left wall book -> falls flat to the right into open space.
+ *    - Outer book next to right wall book -> falls flat to the left into open space.
  * 5. Dynamic Leaning to Next Support: Leans at the exact angle to touch the next support (neighbor, arch, wall).
  * 6. Fall-to-Flat Rule: When no support exists within reach (gap >= H), falls flat on the floor in the open space.
  */
@@ -110,14 +112,14 @@ export function getBookSizing(
   }
 
   const posX = book.positionX ?? 0
-  const isBesideLeftWall = Boolean(book.positionX !== undefined && posX <= 8)
+  const isBesideLeftWall = Boolean(book.positionX !== undefined && posX <= 28)
 
   const distToRightWall = shelfWidth !== undefined && book.positionX !== undefined 
     ? Math.max(0, shelfWidth - (posX + W)) 
     : Infinity
-  const isBesideRightWall = Boolean(distToRightWall <= 8)
+  const isBesideRightWall = Boolean(distToRightWall <= 28)
 
-  // 3. Packed Books & Wall-Sandwiched Books -> Stand Upright
+  // 3. Packed Books & Wall-Supported Books -> Stand Upright
   const hasTightLeft = Boolean(neighbors?.left && neighbors.left.distance <= 16 && !neighbors.left.isFlat)
   const hasTightRight = Boolean(neighbors?.right && neighbors.right.distance <= 16 && !neighbors.right.isFlat)
 
@@ -147,8 +149,10 @@ export function getBookSizing(
   } else if (book.layerMode === 'leaning-right') {
     leanDir = 'right'
   } else if (hasTightLeft && !hasTightRight) {
+    // Supported on left (e.g. left wall book) -> must lean RIGHT into open space
     leanDir = 'right'
   } else if (hasTightRight && !hasTightLeft) {
+    // Supported on right (e.g. right wall book) -> must lean LEFT into open space
     leanDir = 'left'
   } else if (hasLeftNeighbor && !hasRightNeighbor) {
     leanDir = 'left'
