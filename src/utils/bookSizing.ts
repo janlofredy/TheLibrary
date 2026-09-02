@@ -68,10 +68,11 @@ export interface NeighborInfo {
  * 2. Thick Volume Stability: Spine width > 45px always stands upright.
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
  * 4. Left Wall Leaning: Books at shelf edge (X <= 8px) lean against the vertical frame (-5.5 deg).
- * 5. Dynamic Gap-Spanning Angle: Rotates across the gap (sin(theta) = totalGap / H) until touching the adjacent book.
- * 6. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted.
- * 7. Flat Book Contact: Rests against flat book's raised corner at 6.0 deg.
- * 8. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
+ * 5. Mutual Lean / A-Frame: When 2 books lean toward each other, their tops meet at a mutual apex: sin(theta) = gap / (H1 + H2).
+ * 6. Dynamic Gap-Spanning Angle: Rotates across the gap (sin(theta) = totalGap / H) until touching the adjacent book.
+ * 7. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
+ * 8. Flat Book Contact: Rests against flat book's raised corner at 6.0 deg.
+ * 9. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
  */
 export function getBookSizing(
   book: Book,
@@ -174,7 +175,30 @@ export function getBookSizing(
     }
   }
 
-  // 8. Dynamic Gap-Spanning Lean & Cascading Domino Touch
+  // 8. Mutual Lean / A-Frame Apex Contact (when 2 adjacent books lean towards each other)
+  const isNeighborSlim = neighbor.width <= 45
+  const isNeighborLeaningTowardsUs = isNeighborSlim && (neighbor.rotationDeg !== undefined
+    ? Math.sign(neighbor.rotationDeg) === (leanDir === 'right' ? -1 : 1)
+    : getNaturalLeanDirection(neighbor.book.id) === (leanDir === 'right' ? 'left' : 'right'))
+
+  if (isNeighborLeaningTowardsUs) {
+    const sharedApexSin = Math.min(0.65, Math.max(0, neighbor.distance) / (H + neighbor.height))
+    const angleRad = Math.asin(sharedApexSin)
+    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+    const sign = leanDir === 'right' ? 1 : -1
+    const floorLift = Math.ceil(W * Math.sin(angleRad)) + 1
+    return {
+      width: W,
+      height: H,
+      rotationDeg: sign * angleDeg,
+      floorLift,
+      canTilt: true,
+      isFlat: false,
+      topEdgeDetail: false,
+    }
+  }
+
+  // 9. Dynamic Gap-Spanning Lean & Cascading Domino Touch (same direction or leaning on upright volume)
   const isNeighborTiltedSameDir = neighbor.rotationDeg && Math.sign(neighbor.rotationDeg) === (leanDir === 'right' ? 1 : -1)
   const neighborTopOffset = isNeighborTiltedSameDir ? neighbor.height * Math.sin((Math.abs(neighbor.rotationDeg!) * Math.PI) / 180) : 0
   const totalGap = Math.max(0, neighbor.distance) + neighborTopOffset
