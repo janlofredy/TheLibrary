@@ -27,14 +27,22 @@
         </p>
       </div>
 
-      <!-- Right Actions: Focus Mode & Customizer -->
+      <!-- Right Actions: Share, Focus Mode & Customizer -->
       <div class="flex items-center gap-2">
+        <button
+          class="px-3 py-1.5 rounded-full bg-amber-950/60 hover:bg-amber-900/80 border border-amber-800/80 text-amber-200 hover:text-amber-100 text-xs font-serif-book tracking-wider transition cursor-pointer flex items-center gap-1.5 shadow-md"
+          title="Share or Export Journal"
+          @click="store.openShareModal('book', book.id)"
+        >
+          <span>✨</span> <span>Share</span>
+        </button>
+
         <button
           class="p-2 rounded-full bg-black/40 hover:bg-black/70 border border-stone-800 text-stone-300 hover:text-amber-200 text-xs font-mono transition cursor-pointer"
           :title="isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'"
           @click="isFocusMode = !isFocusMode"
         >
-          {{ isFocusMode ? '⛶ Normal' : '🗖 Focus' }}
+          {{ isFocusMode ? '⛶' : '🗖' }}
         </button>
 
         <button

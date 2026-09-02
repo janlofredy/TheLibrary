@@ -14,8 +14,15 @@
 
     <!-- Main App Content -->
     <template v-else>
+      <!-- Standalone Public Reader View (When opening a shared Gist link) -->
+      <PublicReader
+        v-if="store.sharedGistId"
+        :gist-id="store.sharedGistId"
+        @exit="store.sharedGistId = null"
+      />
+
       <!-- Writing Desk Mode (When a Book is open and animation finished) -->
-      <WritingDesk v-if="store.activeOpenedBookId" />
+      <WritingDesk v-else-if="store.activeOpenedBookId" />
 
       <!-- Bookshelf Browsing Mode -->
       <template v-else>
@@ -38,6 +45,7 @@
       <ShelfModal />
       <LibraryModal />
       <AuthModal />
+      <ShareModal />
     </template>
   </div>
 </template>
@@ -49,10 +57,12 @@ import Navbar from '@/components/common/Navbar.vue'
 import BookshelfView from '@/components/bookshelf/BookshelfView.vue'
 import WritingDesk from '@/components/desk/WritingDesk.vue'
 import BookOpeningScene from '@/components/bookshelf/BookOpeningScene.vue'
+import PublicReader from '@/components/share/PublicReader.vue'
 import BookCustomizerModal from '@/components/customizer/BookCustomizerModal.vue'
 import ShelfModal from '@/components/customizer/ShelfModal.vue'
 import LibraryModal from '@/components/customizer/LibraryModal.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
+import ShareModal from '@/components/share/ShareModal.vue'
 
 const store = useLibraryStore()
 

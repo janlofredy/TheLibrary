@@ -1,0 +1,17 @@
+{
+  "name": "The Journal Library",
+  "short_name": "TheLibrary",
+  "description": "Tactile skeuomorphic bookshelf & private journal library powered by GitHub as a Database",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#120d09",
+  "theme_color": "#120d09",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

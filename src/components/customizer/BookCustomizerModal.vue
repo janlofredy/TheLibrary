@@ -284,14 +284,22 @@
 
         <!-- Modal Footer Actions -->
         <div class="flex items-center justify-between pt-5 border-t border-stone-800 mt-6">
-          <div>
+          <div class="flex items-center gap-3">
             <button
               v-if="isEditing"
               type="button"
-              class="text-xs text-rose-400 hover:text-rose-300 underline font-mono"
+              class="text-xs text-rose-400 hover:text-rose-300 underline font-mono cursor-pointer"
               @click="handleDelete"
             >
               Delete Book
+            </button>
+            <button
+              v-if="isEditing && store.editingBook"
+              type="button"
+              class="px-2.5 py-1 rounded bg-amber-950/60 border border-amber-800 text-amber-200 text-xs font-mono hover:bg-amber-900 transition cursor-pointer"
+              @click="store.openShareModal('book', store.editingBook.id)"
+            >
+              ✨ Share / Export
             </button>
           </div>
 

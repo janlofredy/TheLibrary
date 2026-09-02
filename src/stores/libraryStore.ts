@@ -24,6 +24,9 @@ export const useLibraryStore = defineStore('library', () => {
   const isShelfModalOpen = ref(false)
   const isLibraryModalOpen = ref(false)
   const isAuthModalOpen = ref(false)
+  const isShareModalOpen = ref(false)
+  const shareTarget = ref<{ type: 'book' | 'shelf' | 'library'; id: string } | null>(null)
+  const sharedGistId = ref<string | null>(null)
   
   const editingBook = ref<Book | null>(null)
   const targetShelfIdForNewBook = ref<string | null>(null)
@@ -76,6 +79,13 @@ export const useLibraryStore = defineStore('library', () => {
       await loadAll()
       if (libraries.value.length > 0 && !currentLibraryId.value) {
         currentLibraryId.value = libraries.value[0].id
+      }
+
+      // Check if URL has ?share_gist=
+      const params = new URLSearchParams(window.location.search)
+      const gist = params.get('share_gist')
+      if (gist) {
+        sharedGistId.value = gist
       }
 
       // If user is authenticated, attempt background pull
@@ -451,6 +461,16 @@ export const useLibraryStore = defineStore('library', () => {
     isAuthModalOpen.value = false
   }
 
+  function openShareModal(type: 'book' | 'shelf' | 'library', id: string) {
+    shareTarget.value = { type, id }
+    isShareModalOpen.value = true
+  }
+
+  function closeShareModal() {
+    isShareModalOpen.value = false
+    shareTarget.value = null
+  }
+
   return {
     isLoading,
     libraries,
@@ -472,6 +492,9 @@ export const useLibraryStore = defineStore('library', () => {
     isShelfModalOpen,
     isLibraryModalOpen,
     isAuthModalOpen,
+    isShareModalOpen,
+    shareTarget,
+    sharedGistId,
     editingBook,
     targetShelfIdForNewBook,
     editingShelf,
@@ -504,5 +527,7 @@ export const useLibraryStore = defineStore('library', () => {
     closeLibraryModal,
     openAuthModal,
     closeAuthModal,
+    openShareModal,
+    closeShareModal,
   }
 })

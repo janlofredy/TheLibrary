@@ -73,6 +73,13 @@
       <div class="flex items-center gap-1.5 opacity-40 group-hover/shelf:opacity-100 transition-opacity">
         <button
           class="p-1 rounded text-stone-400 hover:text-amber-200 hover:bg-black/30 text-xs transition cursor-pointer"
+          title="Share Shelf"
+          @click="store.openShareModal('shelf', shelf.id)"
+        >
+          ✨
+        </button>
+        <button
+          class="p-1 rounded text-stone-400 hover:text-amber-200 hover:bg-black/30 text-xs transition cursor-pointer"
           title="Edit Shelf"
           @click="handleEditShelf"
         >
