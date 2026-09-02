@@ -44,6 +44,7 @@
             :book="item.book"
             :left-neighbor="item.leftNeighbor"
             :right-neighbor="item.rightNeighbor"
+            :physics-transform="item.physicsTransform"
             @select="handleSelectBook"
             @edit="handleEditBook"
           />
@@ -132,7 +133,8 @@ import { ref, computed } from 'vue'
 import type { Shelf, Book } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { calculateSpineWidth, calculateBookHeight, getBookSizing, type NeighborInfo } from '@/utils/bookSizing'
-import BookSpine from './BookSpine.vue'
+import { createShelfPhysics } from '@/physics/shelfPhysics'
+import BookSpine, { type PhysicsOverride } from './BookSpine.vue'
 
 const props = defineProps<{
   shelf: Shelf
@@ -143,6 +145,8 @@ const shelfTrack = ref<HTMLElement | null>(null)
 const shelfCanvas = ref<HTMLElement | null>(null)
 const dragIndicatorX = ref<number | null>(null)
 
+const shelfPhysics = createShelfPhysics(900, 265)
+
 interface PositionedBook {
   book: Book
   x: number
@@ -151,6 +155,7 @@ interface PositionedBook {
   isFlat: boolean
   leftNeighbor: NeighborInfo | null
   rightNeighbor: NeighborInfo | null
+  physicsTransform?: PhysicsOverride
 }
 
 const positionedBooks = computed<PositionedBook[]>(() => {
@@ -163,16 +168,21 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     return aX - bX
   })
 
+  const canvasW = shelfCanvas.value?.clientWidth || 900
+  const physicalTransforms = shelfPhysics.syncBooks(shelfBooks, canvasW, 265)
+
   let currentFlowX = 0
-  const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean }[] = []
+  const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean; physicsTransform?: PhysicsOverride }[] = []
 
   for (const book of sorted) {
+    const pt = physicalTransforms.get(book.id)
     const isExplicitFlat = book.layerMode === 'horizontal-stack'
     const spineW = calculateSpineWidth(book.pageCount || 0)
     const bookH = calculateBookHeight(book.id)
     const flatLength = bookH
-    const bookWidth = isExplicitFlat ? flatLength : spineW
-    const bookHeight = isExplicitFlat ? spineW : bookH
+    const bookWidth = pt ? pt.width : (isExplicitFlat ? flatLength : spineW)
+    const bookHeight = pt ? pt.height : (isExplicitFlat ? spineW : bookH)
+    const isFlat = pt ? pt.isFlat : isExplicitFlat
 
     let x = book.positionX
     if (x === undefined || x < 0) {
@@ -184,23 +194,16 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       x,
       width: bookWidth,
       height: bookHeight,
-      isFlat: isExplicitFlat,
+      isFlat,
+      physicsTransform: pt ? {
+        width: pt.width,
+        height: pt.height,
+        angleDeg: pt.angleDeg,
+        isFlat: pt.isFlat,
+      } : undefined,
     })
 
-    // Advance floor flow coordinate with snug separation
     currentFlowX = Math.max(currentFlowX, x + bookWidth + 6)
-  }
-
-  const canvasW = shelfCanvas.value?.clientWidth || 900
-
-  // Pre-resolve isFlat status for books falling flat on open floor
-  const preliminarySizings = calculatedItems.map(item => getBookSizing(item.book, undefined, canvasW))
-  for (let i = 0; i < calculatedItems.length; i++) {
-    if (preliminarySizings[i].isFlat) {
-      calculatedItems[i].isFlat = true
-      calculatedItems[i].width = preliminarySizings[i].width
-      calculatedItems[i].height = preliminarySizings[i].height
-    }
   }
 
   // Determine physical neighbor contact information
@@ -244,26 +247,8 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       isFlat: current.isFlat,
       leftNeighbor,
       rightNeighbor,
+      physicsTransform: current.physicsTransform,
     })
-  }
-
-  // 2-Pass Cascading Lean Propagation (Right-to-Left for right-leaning stacks, Left-to-Right for left-leaning stacks)
-  const sizings = result.map(p => getBookSizing(p.book, { left: p.leftNeighbor, right: p.rightNeighbor }, canvasW))
-
-  // Propagate Right-to-Left (books leaning right towards already-tilted neighbors)
-  for (let i = result.length - 2; i >= 0; i--) {
-    if (result[i].rightNeighbor) {
-      result[i].rightNeighbor!.rotationDeg = sizings[i + 1].rotationDeg
-      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor }, canvasW)
-    }
-  }
-
-  // Propagate Left-to-Right (books leaning left towards already-tilted neighbors)
-  for (let i = 1; i < result.length; i++) {
-    if (result[i].leftNeighbor) {
-      result[i].leftNeighbor!.rotationDeg = sizings[i - 1].rotationDeg
-      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor }, canvasW)
-    }
   }
 
   return result

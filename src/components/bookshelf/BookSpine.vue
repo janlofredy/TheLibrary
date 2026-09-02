@@ -141,11 +141,19 @@ import type { Book } from '@/types/journal'
 import { getBookSizing, type NeighborInfo } from '@/utils/bookSizing'
 import { useLibraryStore } from '@/stores/libraryStore'
 
+export interface PhysicsOverride {
+  width?: number
+  height?: number
+  angleDeg?: number
+  isFlat?: boolean
+}
+
 const props = defineProps<{
   book: Book
   leftNeighbor?: NeighborInfo | null
   rightNeighbor?: NeighborInfo | null
   isGhost?: boolean
+  physicsTransform?: PhysicsOverride | null
 }>()
 
 const emit = defineEmits<{
@@ -155,15 +163,45 @@ const emit = defineEmits<{
 
 const store = useLibraryStore()
 
-const sizing = computed(() => getBookSizing(props.book, { left: props.leftNeighbor, right: props.rightNeighbor }))
+const fallbackSizing = computed(() => getBookSizing(props.book, { left: props.leftNeighbor, right: props.rightNeighbor }))
+
+const isFlat = computed(() => {
+  if (props.physicsTransform?.isFlat !== undefined) return props.physicsTransform.isFlat
+  return fallbackSizing.value.isFlat
+})
+
+const width = computed(() => {
+  if (props.physicsTransform?.width !== undefined) return props.physicsTransform.width
+  return fallbackSizing.value.width
+})
+
+const height = computed(() => {
+  if (props.physicsTransform?.height !== undefined) return props.physicsTransform.height
+  return fallbackSizing.value.height
+})
+
+const rotationDeg = computed(() => {
+  if (props.physicsTransform?.angleDeg !== undefined) return props.physicsTransform.angleDeg
+  return fallbackSizing.value.rotationDeg
+})
+
+const sizing = computed(() => ({
+  width: width.value,
+  height: height.value,
+  rotationDeg: rotationDeg.value,
+  isFlat: isFlat.value,
+  topEdgeDetail: fallbackSizing.value.topEdgeDetail,
+}))
 
 const containerWrapperStyle = computed(() => {
-  const { width, height, rotationDeg, floorLift, isFlat } = sizing.value
-  
-  if (isFlat) {
+  const w = width.value
+  const h = height.value
+  const rot = rotationDeg.value
+
+  if (isFlat.value) {
     return {
-      width: `${width}px`,
-      height: `${height}px`,
+      width: `${w}px`,
+      height: `${h}px`,
       transform: 'none',
       zIndex: 10,
     }
@@ -173,15 +211,17 @@ const containerWrapperStyle = computed(() => {
   let transformOrigin = 'bottom center'
   let zIndex = 10
 
-  if (rotationDeg !== 0) {
-    transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
-    transformOrigin = rotationDeg > 0 ? 'bottom left' : 'bottom right'
+  if (rot !== 0) {
+    const rad = (Math.abs(rot) * Math.PI) / 180
+    const floorLift = Math.ceil(w * Math.sin(rad)) + 1
+    transform = `translateY(-${floorLift}px) rotate(${rot}deg)`
+    transformOrigin = rot > 0 ? 'bottom left' : 'bottom right'
     zIndex = 20
   }
 
   return {
-    width: `${width}px`,
-    height: `${height}px`,
+    width: `${w}px`,
+    height: `${h}px`,
     transform,
     transformOrigin,
     zIndex,
