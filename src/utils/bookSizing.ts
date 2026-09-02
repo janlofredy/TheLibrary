@@ -64,7 +64,7 @@ export interface NeighborInfo {
 
 /**
  * Calculates the exact trigonometric lean angle required for a book of height H and width W
- * to rotate around its bottom corner and span the exact gap to hit its neighbor.
+ * to rotate around its bottom corner and span the exact gap to hit a standing neighbor.
  * Solves: H * sin(theta) + W * (cos(theta) - 1) = gap
  */
 export function computePreciseLeanAngle(gap: number, H: number, W: number): number {
@@ -88,10 +88,41 @@ export function computePreciseLeanAngle(gap: number, H: number, W: number): numb
 }
 
 /**
+ * Computes the exact physical contact angle for a standing book resting its body
+ * against the top-edge corner of an adjacent flat book (height H_flat).
+ * Solves: (W + gap) * cos(theta) - H_flat * sin(theta) = W
+ */
+export function computeFlatBookLeanAngle(gap: number, flatHeight: number, spineWidth: number): number {
+  const H_flat = Math.max(26, flatHeight)
+  const W = spineWidth
+  
+  if (gap < 2) {
+    // Resting snugly against adjacent flat book corner
+    return 7.5
+  }
+
+  // Initial estimate based on triangle to flat corner
+  let theta = Math.atan2(gap, H_flat)
+  
+  // Newton-Raphson refinement for exact contact between rotated edge and (W + gap, H_flat)
+  for (let step = 0; step < 3; step++) {
+    const cosT = Math.cos(theta)
+    const sinT = Math.sin(theta)
+    const f = (W + gap) * cosT - H_flat * sinT - W
+    const df = -(W + gap) * sinT - H_flat * cosT
+    if (Math.abs(df) > 1) {
+      theta = Math.max(0.05, Math.min(0.72, theta - f / df)) // Bounded to max ~41 deg
+    }
+  }
+  
+  return Number(((theta * 180) / Math.PI).toFixed(1))
+}
+
+/**
  * Computes full sizing according to the formal physics specification:
- * 1. Cascading Domino Physics: Leaning towards an already-tilted neighbor spans the tilted neighbor's shifted surface (no floating in mid-air).
- * 2. Tight neighbor cascades (distance <= 8px) adopt parallel domino tilt for snug contact along their full spine face.
- * 3. Flat books receive resting contact with zero piercing.
+ * 1. Flat Book Resting Contact: Standing books leaning towards flat books rest their body against the flat book's raised corner with zero air.
+ * 2. Cascading Domino Physics: Leaning towards an already-tilted neighbor spans the tilted neighbor's shifted surface.
+ * 3. Tight neighbor cascades (distance <= 8px) adopt parallel domino tilt for snug contact along their full spine face.
  * 4. Open spaces (distance >= flatBookLength) safely fall flat on the shelf floor.
  */
 export function getBookSizing(
@@ -174,10 +205,7 @@ export function getBookSizing(
 
     // Leaning on a flat book to the right
     if (neighbor.isFlat) {
-      const flatH = Math.max(28, neighbor.height)
-      const gap = Math.max(0, neighbor.distance)
-      const effectiveHeight = Math.max(60, fullBookHeight - flatH)
-      const angleDeg = computePreciseLeanAngle(gap, effectiveHeight, spineThickness)
+      const angleDeg = computeFlatBookLeanAngle(neighbor.distance, neighbor.height, spineThickness)
       const angleRad = (angleDeg * Math.PI) / 180
       const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
@@ -293,10 +321,7 @@ export function getBookSizing(
     }
 
     if (neighbor.isFlat) {
-      const flatH = Math.max(28, neighbor.height)
-      const gap = Math.max(0, neighbor.distance)
-      const effectiveHeight = Math.max(60, fullBookHeight - flatH)
-      const angleDeg = computePreciseLeanAngle(gap, effectiveHeight, spineThickness)
+      const angleDeg = computeFlatBookLeanAngle(neighbor.distance, neighbor.height, spineThickness)
       const angleRad = (angleDeg * Math.PI) / 180
       const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
