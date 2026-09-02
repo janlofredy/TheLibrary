@@ -336,40 +336,28 @@ function resolveNonOverlappingPosition(
   // Sort items from left to right
   const sorted = [...items].sort((a, b) => a.x - b.x)
 
-  // Iteratively resolve collision with any overlapping book
+  // Iteratively resolve collision with any overlapping book base
   for (let iter = 0; iter < 3; iter++) {
     let hadOverlap = false
     for (const item of sorted) {
-      const sizing = getBookSizing(item.book, { left: item.leftNeighbor, right: item.rightNeighbor })
-      
-      let itemLeft = item.x
-      let itemRight = item.x + item.width
-      
-      if (!sizing.isFlat && sizing.rotationDeg > 0) {
-        // Tilted right: reaches further to the right
-        const leanReach = Math.ceil(item.height * Math.sin((sizing.rotationDeg * Math.PI) / 180))
-        itemRight = item.x + item.width + leanReach
-      } else if (!sizing.isFlat && sizing.rotationDeg < 0) {
-        // Tilted left: reaches to the left
-        const leanReach = Math.ceil(item.height * Math.sin((Math.abs(sizing.rotationDeg) * Math.PI) / 180))
-        itemLeft = Math.max(0, item.x - leanReach)
-      }
+      const itemLeft = item.x
+      const itemRight = item.x + item.width
 
       const dragLeft = x
       const dragRight = x + draggingW
 
-      // Overlap detected when interval intersects
+      // Overlap detected when base interval intersects
       if (dragLeft < itemRight && dragRight > itemLeft) {
         hadOverlap = true
         const dragCenter = dragLeft + draggingW / 2
-        const itemCenter = itemLeft + (itemRight - itemLeft) / 2
+        const itemCenter = itemLeft + item.width / 2
 
-        if (dragCenter < itemCenter && itemLeft >= draggingW + 2) {
-          // Snap flush to left of item
-          x = Math.max(0, itemLeft - draggingW - 2)
+        if (dragCenter < itemCenter && itemLeft >= draggingW) {
+          // Snap flush to left base of item (straightens leaning books upright)
+          x = Math.max(0, itemLeft - draggingW)
         } else {
-          // Snap flush to right of item
-          x = itemRight + 2
+          // Snap flush to right base of item (straightens leaning books upright)
+          x = itemRight
         }
       }
     }
