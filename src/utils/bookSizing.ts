@@ -63,11 +63,11 @@ export interface NeighborInfo {
 }
 
 /**
- * Computes full sizing according to the formal first-principles physics specification:
- * 1. Natural Leaning: Slim books lean at a visible, tactile angle (5.5 deg to 18 deg) touching adjacent books, flat books, or shelf walls.
- * 2. Cascading Domino Stacks: Consecutive leaning books share parallel tilt angles for snug domino cascades.
- * 3. Wall Leaning: Books at the shelf edge (X <= 8px) lean against the vertical shelf wall.
- * 4. Open Space: Books with no support on the lean side (gap >= full height) lie flat on the floor.
+ * Computes full sizing according to the formal physics specification:
+ * 1. Supported Leaning: Books within physical support reach (gap <= 28px) of a neighbor lean at a natural, elegant angle (5.5 deg).
+ * 2. Cascading Domino Stacks: Consecutive leaning books share parallel tilt angles for uniform, snug domino cascades.
+ * 3. Wall Leaning: Books at the shelf edge (X <= 12px) lean against the vertical shelf wall (-5.5 deg).
+ * 4. Unsupported Open Space: Books with no neighbor within support reach (gap > 28px) lie flat on the wooden floor.
  */
 export function getBookSizing(
   book: Book,
@@ -90,8 +90,8 @@ export function getBookSizing(
     }
   }
 
-  // Thick Volume Check (Spine width > 48px stands firmly upright)
-  const canTilt = spineThickness <= 48
+  // Thick Volume Check (Spine width > 45px stands firmly upright)
+  const canTilt = spineThickness <= 45
   if (!canTilt) {
     return {
       width: spineThickness,
@@ -114,13 +114,15 @@ export function getBookSizing(
     leanDir = getNaturalLeanDirection(book.id)
   }
 
-  const BASE_ANGLE = 6.0
+  const BASE_ANGLE = 5.5
+  const angleRad = (BASE_ANGLE * Math.PI) / 180
+  const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
   if (leanDir === 'right') {
     const neighbor = neighbors?.right
 
-    // If completely open with no neighbor on the right and no shelf bounds -> falls flat
-    if (!neighbor) {
+    // If no neighbor on the right or distance is beyond physical support reach (> 28px) -> lies flat on floor
+    if (!neighbor || neighbor.distance > 28) {
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -132,51 +134,11 @@ export function getBookSizing(
       }
     }
 
-    // Leaning on a flat book
-    if (neighbor.isFlat) {
-      const angleRad = (BASE_ANGLE * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: BASE_ANGLE,
-        floorLift,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    // Leaning on a standing or tilted neighbor
-    const neighborAngle = neighbor.rotationDeg ?? 0
-
-    // Domino cascade if neighbor is also leaning right
-    if (neighborAngle > 0) {
-      const angleDeg = neighborAngle
-      const angleRad = (angleDeg * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: angleDeg,
-        floorLift,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    // Dynamic contact angle spanning the gap to touch neighbor
-    const gap = neighbor.distance
-    const reach = Math.max(12, Math.min(gap, fullBookHeight * 0.35))
-    const angleRad = Math.asin(reach / fullBookHeight)
-    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
-    const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-
+    // Supported by neighbor within 28px
     return {
       width: spineThickness,
       height: fullBookHeight,
-      rotationDeg: angleDeg,
+      rotationDeg: BASE_ANGLE,
       floorLift,
       canTilt: true,
       isFlat: false,
@@ -188,8 +150,6 @@ export function getBookSizing(
     const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 12)
 
     if (isAgainstLeftWall) {
-      const angleRad = (BASE_ANGLE * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
       return {
         width: spineThickness,
         height: fullBookHeight,
@@ -201,7 +161,8 @@ export function getBookSizing(
       }
     }
 
-    if (!neighbor) {
+    // If no neighbor on the left or distance is beyond physical support reach (> 28px) -> lies flat on floor
+    if (!neighbor || neighbor.distance > 28) {
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -213,49 +174,11 @@ export function getBookSizing(
       }
     }
 
-    // Leaning on a flat book
-    if (neighbor.isFlat) {
-      const angleRad = (BASE_ANGLE * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: -BASE_ANGLE,
-        floorLift,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    // Domino cascade if neighbor is also leaning left
-    const neighborAngle = neighbor.rotationDeg ?? 0
-    if (neighborAngle < 0) {
-      const angleDeg = neighborAngle
-      const angleRad = (Math.abs(angleDeg) * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-      return {
-        width: spineThickness,
-        height: fullBookHeight,
-        rotationDeg: angleDeg,
-        floorLift,
-        canTilt: true,
-        isFlat: false,
-        topEdgeDetail: false,
-      }
-    }
-
-    // Dynamic contact angle spanning gap to touch left neighbor
-    const gap = neighbor.distance
-    const reach = Math.max(12, Math.min(gap, fullBookHeight * 0.35))
-    const angleRad = Math.asin(reach / fullBookHeight)
-    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
-    const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-
+    // Supported by neighbor on left within 28px
     return {
       width: spineThickness,
       height: fullBookHeight,
-      rotationDeg: -angleDeg,
+      rotationDeg: -BASE_ANGLE,
       floorLift,
       canTilt: true,
       isFlat: false,
