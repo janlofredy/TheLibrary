@@ -513,9 +513,8 @@ jobs:
 - Multi-page pagination, page flipping, word counter, and metadata (mood, tags, timestamps).
 - Auto-recalculation of book spine thickness as pages are added or removed.
 
-### Phase 3: GitHub as DB Sync Engine & Multi-Provider Auth
+### Phase 3: GitHub as DB Sync Engine & Git Version Control
 - Implement GitHub Primary Authentication (OAuth & Personal Access Token).
-- Add **Google OAuth 2.0 Account Linking** (enabling 1-click Sign in with Google on subsequent sessions).
 - Build the **Git Sync Engine**:
   - Read/Write repository and Gist data via Octokit / Fetch API.
   - Background debounced batch commits to prevent rate limits.
@@ -537,3 +536,14 @@ jobs:
 - **Pristine Empty Library Provisioning**:
   - When a new user authenticates for the first time, initialize an **Empty Library** with 1 clean shelf and **zero pre-populated books** ($0$ books).
   - Design an elegant, tactile **"Add Your First Journal"** prompt centered on the empty shelf ledge.
+
+### Phase 6: Google SSO Integration (Single Sign-On & Account Linking)
+- **Google OAuth 2.0 / OpenID Connect Setup**:
+  - Integrate Google Identity Services SDK (`@google/gsi-client` / Google OAuth 2.0 web client).
+- **1-Click Google Sign-In**:
+  - Implement tactile, skeuomorphic **"Sign in with Google"** button on the Grand Library Aisle Landing Page and login modals.
+- **Account Linking & Vault Binding**:
+  - Allow users to link their Google profile in Settings, associating their verified Google `sub` ID and email with their sovereign GitHub vault repository.
+- **Multi-Provider Session Management**:
+  - Secure credential storage in IndexedDB with auto-refreshing OAuth tokens.
+  - Effortless 1-tap Google login on mobile and secondary devices without re-authenticating GitHub credentials.
