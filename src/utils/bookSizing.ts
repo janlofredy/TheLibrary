@@ -68,8 +68,8 @@ export interface NeighborInfo {
  * 2. Thick Volume Stability: Spine width > 45px always stands upright.
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
  * 4. Left Wall Leaning: Books at shelf edge (X <= 8px) lean against the vertical frame (-5.5 deg).
- * 5. Mutual Lean / A-Frame: When 2 books lean toward each other, their tops meet at a mutual apex: sin(theta) = gap / (H1 + H2).
- * 6. Dynamic Gap-Spanning Angle: Rotates across the gap (sin(theta) = totalGap / H) until touching the adjacent book.
+ * 5. Height-Aware Mutual Lean / A-Frame: When 2 books lean toward each other, the taller book leans more to meet the shorter book's top corner.
+ * 6. Dynamic Height-Aware Gap-Spanning: Contact height is min(H, neighbor.height), so taller books lean more when resting on shorter neighbors.
  * 7. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
  * 8. Flat Book Contact: Rests against flat book's raised corner at 6.0 deg.
  * 9. Fall-to-Flat Rule: When unsupported (gap >= H or no neighbor), falls flat on the shelf floor.
@@ -175,15 +175,31 @@ export function getBookSizing(
     }
   }
 
-  // 8. Mutual Lean / A-Frame Apex Contact (when 2 adjacent books lean towards each other)
+  // 8. Height-Aware Mutual Lean / A-Frame Apex Contact (when 2 adjacent books lean towards each other)
   const isNeighborSlim = neighbor.width <= 45
   const isNeighborLeaningTowardsUs = isNeighborSlim && (neighbor.rotationDeg !== undefined
     ? Math.sign(neighbor.rotationDeg) === (leanDir === 'right' ? -1 : 1)
     : getNaturalLeanDirection(neighbor.book.id) === (leanDir === 'right' ? 'left' : 'right'))
 
   if (isNeighborLeaningTowardsUs) {
-    const sharedApexSin = Math.min(0.65, Math.max(0, neighbor.distance) / (H + neighbor.height))
-    const angleRad = Math.asin(sharedApexSin)
+    const gap = Math.max(0, neighbor.distance)
+    const H_neighbor = neighbor.height
+    const isThisBookTaller = H >= H_neighbor
+
+    let angleRad: number
+    if (isThisBookTaller) {
+      // Taller book leans more to span down to shorter book's top corner
+      const H_contact = Math.max(160, H_neighbor)
+      const remainingReach = gap * (H / (H + H_neighbor))
+      const sinVal = Math.min(0.68, remainingReach / H_contact)
+      angleRad = Math.asin(sinVal)
+    } else {
+      // Shorter book tilts more gently
+      const reach = gap * (H / (H + H_neighbor))
+      const sinVal = Math.min(0.40, reach / H)
+      angleRad = Math.asin(sinVal)
+    }
+
     const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
     const sign = leanDir === 'right' ? 1 : -1
     const floorLift = Math.ceil(W * Math.sin(angleRad)) + 1
@@ -198,7 +214,7 @@ export function getBookSizing(
     }
   }
 
-  // 9. Dynamic Gap-Spanning Lean & Cascading Domino Touch (same direction or leaning on upright volume)
+  // 9. Height-Aware Dynamic Gap-Spanning Lean & Cascading Domino Touch
   const isNeighborTiltedSameDir = neighbor.rotationDeg && Math.sign(neighbor.rotationDeg) === (leanDir === 'right' ? 1 : -1)
   const neighborTopOffset = isNeighborTiltedSameDir ? neighbor.height * Math.sin((Math.abs(neighbor.rotationDeg!) * Math.PI) / 180) : 0
   const totalGap = Math.max(0, neighbor.distance) + neighborTopOffset
@@ -218,8 +234,9 @@ export function getBookSizing(
     }
   }
 
-  // Dynamic span across the gap: sin(theta) = totalGap / H
-  const sinTheta = Math.min(0.65, totalGap / H)
+  // Contact height is min(H, neighbor.height) -> taller books leaning on shorter books lean further
+  const contactHeight = Math.min(H, neighbor.height || H)
+  const sinTheta = Math.min(0.65, totalGap / contactHeight)
   const angleRad = Math.asin(sinTheta)
   const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
   const sign = leanDir === 'right' ? 1 : -1
