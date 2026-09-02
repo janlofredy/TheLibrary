@@ -141,10 +141,17 @@ Users can arrange their books with tactile freedom across the shelf:
 
 ### 4.2 GitHub as Database Architecture
 
-#### **1. Authentication Model**
-- Users authenticate via:
-  1. **GitHub OAuth Flow** (via lightweight static proxy/worker or GitHub OAuth App).
-  2. **Personal Access Token (PAT)**: Stored securely in `localStorage`/IndexedDB with `repo` or `gist` scope.
+#### **1. Authentication & Multi-Provider Identity Model**
+- **Primary Onboarding (GitHub)**:
+  - Users sign up and establish their journal storage vault via GitHub (GitHub OAuth or Personal Access Token).
+  - Automatically provisions the user's private data repository (e.g., `the-journal-vault`).
+- **Linked Google Sign-In (Google OAuth 2.0 / OpenID Connect)**:
+  - Once the account is established via GitHub, users can link their **Google Account** in Settings with one click.
+  - **Subsequent Logins**: The user can log in using either **"Sign in with GitHub"** or **"Sign in with Google"** on any device or browser.
+  - **Identity Binding & Token Management**:
+    - The linked Google user ID (`sub`) and verified email are securely associated with the account's repository vault.
+    - Enables effortless 1-tap Google Sign-In on mobile devices without needing to re-authenticate with GitHub credentials every time.
+  - **Local Session Persistence**: Active sessions are cached securely in IndexedDB with auto-refreshing OAuth tokens for seamless offline-to-online transitions.
 
 #### **2. Repository Storage Structure**
 Data is stored directly in a private/public repository (e.g. `my-journal-library`) or multi-file secret Gists:
@@ -348,8 +355,9 @@ jobs:
 - Multi-page pagination, page flipping, word counter, and metadata (mood, tags, timestamps).
 - Auto-recalculation of book spine thickness as pages are added or removed.
 
-### Phase 3: GitHub as DB Sync Engine & Auth
-- Implement GitHub Authentication (Personal Access Token & OAuth flow).
+### Phase 3: GitHub as DB Sync Engine & Multi-Provider Auth
+- Implement GitHub Primary Authentication (OAuth & Personal Access Token).
+- Add **Google OAuth 2.0 Account Linking** (enabling 1-click Sign in with Google on subsequent sessions).
 - Build the **Git Sync Engine**:
   - Read/Write repository and Gist data via Octokit / Fetch API.
   - Background debounced batch commits to prevent rate limits.

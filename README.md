@@ -15,7 +15,7 @@
 - **🎨 Deep Spine Customization**: Recustomizable spine colors, textures (Ribbed Leather, Gold Foil, Woven Cloth, Modern Matte, Vintage Parchment), title typography, foil colors, and ribbon bookmarks.
 - **✍️ Tactile Writing Desk**: 3D book-pull animation onto a distraction-free writing desk with paper textures (lined, dotted, parchment) and a rich-text / markdown editor.
 - **⚡ Ultra-Lightweight (Vue Vapor Mode)**: Zero Virtual DOM overhead, <15 KB runtime footprint, silky-smooth 60 FPS GPU-accelerated 3D transforms.
-- **🐙 GitHub as Database & Storage**: Zero external backend servers needed. Saves directly to your private GitHub repositories / Gists with automated version control.
+- **🐙 GitHub as Database & Multi-Provider Auth**: Zero external backend servers needed. Saves directly to your private GitHub repositories with automated version control, with support for linking **Google Login** for 1-click access across devices.
 - **🚀 100% Static & Offline-First**: Instant local writing via IndexedDB (Dexie.js) and 1-click deployment to **GitHub Pages**.
 - **🔗 Granular Sharing**: Share at the Library, Shelf, or Book level.
 
