@@ -63,9 +63,9 @@ export interface NeighborInfo {
 
 /**
  * Computes full sizing according to the formal physics specification:
- * 1. Computes lean angle dynamically spanning the exact gap so the book leans until physically hitting the next book.
- * 2. If neighbor is a flat book, leans until resting against the top corner of the flat book.
- * 3. If gap is too wide (> 85px) or unsupported, the book falls over and lies flat on the shelf floor.
+ * 1. Calculates exact lean angle spanning the gap distance to hit the adjacent book (ZERO CLIPPING for any gap < flatBookLength).
+ * 2. If a neighbor is on the lean side at ANY distance < flatBookLength, the book leans against it rather than falling through it.
+ * 3. Only lies flat on the floor if there is full clearance (distance >= flatBookLength or no neighbor).
  * 4. Floor lift keeps the bottom vertex tangent to the floor with zero piercing.
  */
 export function getBookSizing(
@@ -129,14 +129,12 @@ export function getBookSizing(
     leanDir = getNaturalLeanDirection(book.id)
   }
 
-  const MAX_SUPPORT_GAP = 85 // Max gap (px) that a leaning volume can physically span before falling flat
-
   // 5. Evaluate Support & Height on the Lean Side
   if (leanDir === 'right') {
     const neighbor = neighbors?.right
     
-    // If no neighbor on the right or gap is too wide to support leaning -> falls flat
-    if (!neighbor || neighbor.distance > MAX_SUPPORT_GAP) {
+    // If no neighbor on the right or the gap is wider than the book's full height -> falls flat cleanly
+    if (!neighbor || neighbor.distance >= flatBookLength) {
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -148,12 +146,13 @@ export function getBookSizing(
       }
     }
 
-    // Leaning on a flat book to the right
+    // A neighbor is standing or lying within reach (distance < flatBookLength)!
+    // It MUST lean against the neighbor without clipping into it:
     if (neighbor.isFlat) {
       const flatH = Math.max(28, neighbor.height)
       const gap = Math.max(0, neighbor.distance)
-      const effectiveHeight = Math.max(80, fullBookHeight - flatH)
-      const sinTheta = Math.min(0.42, Math.max(0.08, gap / effectiveHeight))
+      const effectiveHeight = Math.max(60, fullBookHeight - flatH)
+      const sinTheta = Math.min(0.85, Math.max(0.08, gap / effectiveHeight))
       const angleRad = Math.asin(sinTheta)
       const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
       const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
@@ -169,7 +168,7 @@ export function getBookSizing(
       }
     }
 
-    // Leaning on a standing neighbor to the right
+    // Standing neighbor on right
     const gap = neighbor.distance
     if (gap < 2) {
       // Flush against neighbor -> stands upright
@@ -185,7 +184,7 @@ export function getBookSizing(
     }
 
     // Leans all the way across the gap to hit the standing neighbor!
-    const sinTheta = Math.min(0.45, gap / fullBookHeight)
+    const sinTheta = Math.min(0.92, gap / fullBookHeight)
     const angleRad = Math.asin(sinTheta)
     const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
     const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
@@ -221,8 +220,8 @@ export function getBookSizing(
       }
     }
     
-    // If no neighbor on the left or gap is too wide to support leaning -> falls flat
-    if (!neighbor || neighbor.distance > MAX_SUPPORT_GAP) {
+    // If no neighbor on the left or the gap is wider than the book's full height -> falls flat cleanly
+    if (!neighbor || neighbor.distance >= flatBookLength) {
       return {
         width: flatBookLength,
         height: spineThickness,
@@ -234,12 +233,12 @@ export function getBookSizing(
       }
     }
 
-    // Leaning on a flat book to the left
+    // A neighbor is standing or lying within reach to the left (distance < flatBookLength)!
     if (neighbor.isFlat) {
       const flatH = Math.max(28, neighbor.height)
       const gap = Math.max(0, neighbor.distance)
-      const effectiveHeight = Math.max(80, fullBookHeight - flatH)
-      const sinTheta = Math.min(0.42, Math.max(0.08, gap / effectiveHeight))
+      const effectiveHeight = Math.max(60, fullBookHeight - flatH)
+      const sinTheta = Math.min(0.85, Math.max(0.08, gap / effectiveHeight))
       const angleRad = Math.asin(sinTheta)
       const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
       const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
@@ -255,7 +254,7 @@ export function getBookSizing(
       }
     }
 
-    // Leaning on a standing neighbor to the left
+    // Standing neighbor on left
     const gap = neighbor.distance
     if (gap < 2) {
       // Flush against neighbor -> stands upright
@@ -271,7 +270,7 @@ export function getBookSizing(
     }
 
     // Leans all the way across the gap to hit the standing neighbor!
-    const sinTheta = Math.min(0.45, gap / fullBookHeight)
+    const sinTheta = Math.min(0.92, gap / fullBookHeight)
     const angleRad = Math.asin(sinTheta)
     const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
     const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
