@@ -294,6 +294,53 @@ const shelfContentWidth = computed(() => {
   return trailingButtonX.value + 120
 })
 
+function resolveNonOverlappingPosition(
+  proposedX: number,
+  draggingW: number,
+  existingItems: PositionedBook[],
+  draggingBookId?: string
+): number {
+  let x = Math.max(0, proposedX)
+  if (x < 14) {
+    x = 0
+  }
+
+  const items = existingItems.filter(item => !draggingBookId || item.book.id !== draggingBookId)
+  if (items.length === 0) return x
+
+  // Sort items from left to right
+  const sorted = [...items].sort((a, b) => a.x - b.x)
+
+  // Iteratively resolve collision with any overlapping book
+  for (let iter = 0; iter < 3; iter++) {
+    let hadOverlap = false
+    for (const item of sorted) {
+      const itemLeft = item.x
+      const itemRight = item.x + item.width
+      const dragLeft = x
+      const dragRight = x + draggingW
+
+      // Overlap detected when interval intersects
+      if (dragLeft < itemRight && dragRight > itemLeft) {
+        hadOverlap = true
+        const dragCenter = dragLeft + draggingW / 2
+        const itemCenter = itemLeft + item.width / 2
+
+        if (dragCenter < itemCenter && itemLeft >= draggingW + 2) {
+          // Snap flush to left of item
+          x = Math.max(0, itemLeft - draggingW - 2)
+        } else {
+          // Snap flush to right of item
+          x = itemRight + 2
+        }
+      }
+    }
+    if (!hadOverlap) break
+  }
+
+  return x
+}
+
 function handleTrackDragOver(e: DragEvent) {
   if (!shelfTrack.value) return
   e.dataTransfer!.dropEffect = 'move'
@@ -304,32 +351,21 @@ function handleTrackDragOver(e: DragEvent) {
     : shelfTrack.value.getBoundingClientRect()
   
   const draggingW = store.activeDraggingBook 
-    ? calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
+    ? (store.activeDraggingBook.layerMode === 'horizontal-stack'
+        ? calculateBookHeight(store.activeDraggingBook.id)
+        : calculateSpineWidth(store.activeDraggingBook.pageCount || 0))
     : 34
   const rawX = Math.max(0, Math.round(e.clientX - canvasRect.left - draggingW / 2))
 
-  let targetX = rawX
-  // Snap to very left edge (x = 0) if dragged near shelf start
-  if (rawX < 14) {
-    targetX = 0
-  } else {
-    for (const item of positionedBooks.value) {
-      if (store.activeDraggingBook && item.book.id === store.activeDraggingBook.id) continue
+  // Prevent overlap by resolving position against all other shelf books
+  const validX = resolveNonOverlappingPosition(
+    rawX,
+    draggingW,
+    positionedBooks.value,
+    store.activeDraggingBook?.id
+  )
 
-      // Snap to right side of item
-      if (Math.abs(rawX - (item.x + item.width)) < 18) {
-        targetX = item.x + item.width + 2
-        break
-      }
-      // Snap to left side of item
-      if (Math.abs(rawX - (item.x - draggingW)) < 18) {
-        targetX = Math.max(0, item.x - draggingW - 2)
-        break
-      }
-    }
-  }
-
-  dragIndicatorX.value = targetX
+  dragIndicatorX.value = validX
 }
 
 function handleTrackDragLeave() {
@@ -337,16 +373,29 @@ function handleTrackDragLeave() {
 }
 
 async function handleTrackDrop(e: DragEvent) {
-  const targetX = dragIndicatorX.value
-  dragIndicatorX.value = null
   const activeBook = store.activeDraggingBook
+  let targetX = dragIndicatorX.value
+  dragIndicatorX.value = null
   store.activeDraggingBook = null
 
   if (!shelfTrack.value || !e.dataTransfer) return
 
   const bookId = e.dataTransfer.getData('text/plain') || activeBook?.id
   if (bookId && targetX !== null) {
-    await store.moveBookToPosition(bookId, props.shelf.id, targetX)
+    const draggingW = activeBook
+      ? (activeBook.layerMode === 'horizontal-stack'
+          ? calculateBookHeight(activeBook.id)
+          : calculateSpineWidth(activeBook.pageCount || 0))
+      : 34
+
+    // Final collision validation before database persistence
+    const resolvedX = resolveNonOverlappingPosition(
+      targetX,
+      draggingW,
+      positionedBooks.value,
+      bookId
+    )
+    await store.moveBookToPosition(bookId, props.shelf.id, resolvedX)
   }
 }
 
