@@ -191,8 +191,10 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     currentFlowX = Math.max(currentFlowX, x + bookWidth + 6)
   }
 
+  const canvasW = shelfCanvas.value?.clientWidth || 900
+
   // Pre-resolve isFlat status for books falling flat on open floor
-  const preliminarySizings = calculatedItems.map(item => getBookSizing(item.book))
+  const preliminarySizings = calculatedItems.map(item => getBookSizing(item.book, undefined, canvasW))
   for (let i = 0; i < calculatedItems.length; i++) {
     if (preliminarySizings[i].isFlat) {
       calculatedItems[i].isFlat = true
@@ -246,13 +248,13 @@ const positionedBooks = computed<PositionedBook[]>(() => {
   }
 
   // 2-Pass Cascading Lean Propagation (Right-to-Left for right-leaning stacks, Left-to-Right for left-leaning stacks)
-  const sizings = result.map(p => getBookSizing(p.book, { left: p.leftNeighbor, right: p.rightNeighbor }))
+  const sizings = result.map(p => getBookSizing(p.book, { left: p.leftNeighbor, right: p.rightNeighbor }, canvasW))
 
   // Propagate Right-to-Left (books leaning right towards already-tilted neighbors)
   for (let i = result.length - 2; i >= 0; i--) {
     if (result[i].rightNeighbor) {
       result[i].rightNeighbor!.rotationDeg = sizings[i + 1].rotationDeg
-      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor })
+      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor }, canvasW)
     }
   }
 
@@ -260,7 +262,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
   for (let i = 1; i < result.length; i++) {
     if (result[i].leftNeighbor) {
       result[i].leftNeighbor!.rotationDeg = sizings[i - 1].rotationDeg
-      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor })
+      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor }, canvasW)
     }
   }
 
@@ -271,6 +273,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
 const ghostLeftNeighbor = computed<NeighborInfo | null>(() => {
   if (dragIndicatorX.value === null || !store.activeDraggingBook) return null
   const targetX = dragIndicatorX.value
+  const canvasW = shelfCanvas.value?.clientWidth || 900
 
   const leftCandidates = positionedBooks.value.filter(
     p => p.book.id !== store.activeDraggingBook!.id && p.x + p.width <= targetX
@@ -279,7 +282,7 @@ const ghostLeftNeighbor = computed<NeighborInfo | null>(() => {
 
   const closest = leftCandidates[leftCandidates.length - 1]
   const distance = Math.max(0, targetX - (closest.x + closest.width))
-  const sizing = getBookSizing(closest.book, { left: closest.leftNeighbor, right: closest.rightNeighbor })
+  const sizing = getBookSizing(closest.book, { left: closest.leftNeighbor, right: closest.rightNeighbor }, canvasW)
   return {
     book: closest.book,
     distance,
@@ -293,6 +296,7 @@ const ghostLeftNeighbor = computed<NeighborInfo | null>(() => {
 const ghostRightNeighbor = computed<NeighborInfo | null>(() => {
   if (dragIndicatorX.value === null || !store.activeDraggingBook) return null
   const targetX = dragIndicatorX.value
+  const canvasW = shelfCanvas.value?.clientWidth || 900
   const draggingW = store.activeDraggingBook.layerMode === 'horizontal-stack'
     ? calculateBookHeight(store.activeDraggingBook.id)
     : calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
@@ -304,7 +308,7 @@ const ghostRightNeighbor = computed<NeighborInfo | null>(() => {
 
   const closest = rightCandidates[0]
   const distance = Math.max(0, closest.x - (targetX + draggingW))
-  const sizing = getBookSizing(closest.book, { left: closest.leftNeighbor, right: closest.rightNeighbor })
+  const sizing = getBookSizing(closest.book, { left: closest.leftNeighbor, right: closest.rightNeighbor }, canvasW)
   return {
     book: closest.book,
     distance,

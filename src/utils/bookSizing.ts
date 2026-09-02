@@ -67,8 +67,10 @@ export interface NeighborInfo {
  * 1. Explicit Flat Mode: width = H, height = W, isFlat = true.
  * 2. Thick Volume Stability: Spine width > 45px always stands upright.
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
- * 4. Left Wall Leaning: Books at shelf edge (X <= 8px) lean against the vertical frame (-5.5 deg).
- * 5. Flat Book Contact: Adjacent to a flat book (gap <= 12px) rests gently at 5.5 deg. If gap > 12px, falls flat on the floor.
+ * 4. Shelf Wall Leaning:
+ *    - Left wall: Near left edge (X <= 28px) leans left (-5.5 deg).
+ *    - Right wall: Near right edge (dist <= 28px) leans right (+5.5 deg).
+ * 5. Flat Book Contact: Adjacent to a flat book (gap <= 12px) rests gently at 5.5 deg. If gap > 12px, falls flat on floor.
  * 6. Height-Aware Mutual Lean / A-Frame: When 2 books lean toward each other, the taller book leans more to meet the shorter book's top corner.
  * 7. Dynamic Height-Aware Gap-Spanning: Contact height is min(H, neighbor.height), so taller books lean more when resting on shorter neighbors.
  * 8. Cascading Domino Support: Spans neighbor's shifted top surface when neighbor is tilted in same direction.
@@ -76,7 +78,8 @@ export interface NeighborInfo {
  */
 export function getBookSizing(
   book: Book,
-  neighbors?: { left?: NeighborInfo | null; right?: NeighborInfo | null }
+  neighbors?: { left?: NeighborInfo | null; right?: NeighborInfo | null },
+  shelfWidth?: number
 ): BookSizing {
   const W = calculateSpineWidth(book.pageCount || 0)
   const H = calculateBookHeight(book.id)
@@ -130,11 +133,16 @@ export function getBookSizing(
       ? 'right' 
       : getNaturalLeanDirection(book.id)
 
-  const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
+  const posX = book.positionX ?? 0
+  const isAgainstLeftWall = Boolean(book.positionX !== undefined && posX <= 28)
+  const isAgainstRightWall = Boolean(
+    shelfWidth !== undefined && book.positionX !== undefined && (shelfWidth - (posX + W) <= 28)
+  )
+
   const neighbor = leanDir === 'right' ? neighbors?.right : neighbors?.left
 
   // 5. Left Shelf Wall Contact
-  if (leanDir === 'left' && isAgainstLeftWall) {
+  if (leanDir === 'left' && isAgainstLeftWall && (!neighbors?.left || neighbors.left.distance > 12)) {
     const rad = (5.5 * Math.PI) / 180
     return {
       width: W,
@@ -147,7 +155,21 @@ export function getBookSizing(
     }
   }
 
-  // 6. Unsupported Open Space (gap >= H or no neighbor) -> Fall Flat
+  // 6. Right Shelf Wall Contact
+  if (leanDir === 'right' && isAgainstRightWall && (!neighbors?.right || neighbors.right.distance > 12)) {
+    const rad = (5.5 * Math.PI) / 180
+    return {
+      width: W,
+      height: H,
+      rotationDeg: 5.5,
+      floorLift: Math.ceil(W * Math.sin(rad)) + 1,
+      canTilt: true,
+      isFlat: false,
+      topEdgeDetail: false,
+    }
+  }
+
+  // 7. Unsupported Open Space (gap >= H or no neighbor) -> Fall Flat
   if (!neighbor || neighbor.distance >= H) {
     return {
       width: H,
@@ -160,7 +182,7 @@ export function getBookSizing(
     }
   }
 
-  // 7. Flat Book Contact (Flat book on floor)
+  // 8. Flat Book Contact (Flat book on floor)
   const isNeighborFlatVolume = neighbor.isFlat || (neighbor.width > 60 && neighbor.height <= 45)
   if (isNeighborFlatVolume) {
     if (neighbor.distance <= 12) {
@@ -177,7 +199,7 @@ export function getBookSizing(
         topEdgeDetail: false,
       }
     } else {
-      // Open gap to flat book (> 12px) -> cannot lean across void onto thin edge -> falls flat on shelf floor
+      // Open gap to flat book (> 12px) -> falls flat on shelf floor
       return {
         width: H,
         height: W,
@@ -190,7 +212,7 @@ export function getBookSizing(
     }
   }
 
-  // 8. Height-Aware Mutual Lean / A-Frame Apex Contact (when 2 adjacent books lean towards each other)
+  // 9. Height-Aware Mutual Lean / A-Frame Apex Contact (when 2 adjacent books lean towards each other)
   const isNeighborSlim = neighbor.width <= 45
   const isNeighborLeaningTowardsUs = isNeighborSlim && (neighbor.rotationDeg !== undefined
     ? Math.sign(neighbor.rotationDeg) === (leanDir === 'right' ? -1 : 1)
@@ -229,7 +251,7 @@ export function getBookSizing(
     }
   }
 
-  // 9. Height-Aware Dynamic Gap-Spanning Lean & Cascading Domino Touch
+  // 10. Height-Aware Dynamic Gap-Spanning Lean & Cascading Domino Touch
   const isNeighborTiltedSameDir = neighbor.rotationDeg && Math.sign(neighbor.rotationDeg) === (leanDir === 'right' ? 1 : -1)
   const neighborTopOffset = isNeighborTiltedSameDir ? neighbor.height * Math.sin((Math.abs(neighbor.rotationDeg!) * Math.PI) / 180) : 0
   const totalGap = Math.max(0, neighbor.distance) + neighborTopOffset
