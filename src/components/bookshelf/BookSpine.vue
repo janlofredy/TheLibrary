@@ -1,9 +1,11 @@
 <template>
   <div
     class="relative select-none cursor-grab active:cursor-grabbing group transition-all duration-300 ease-out flex-shrink-0"
+    :class="isGhost ? 'opacity-70 pointer-events-none filter drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]' : ''"
     :style="containerWrapperStyle"
     draggable="true"
     @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
     @click="handleClick"
     @contextmenu.prevent="handleRightClick"
   >
@@ -137,17 +139,21 @@
 import { computed } from 'vue'
 import type { Book } from '@/types/journal'
 import { getBookSizing, type NeighborInfo } from '@/utils/bookSizing'
+import { useLibraryStore } from '@/stores/libraryStore'
 
 const props = defineProps<{
   book: Book
   leftNeighbor?: NeighborInfo | null
   rightNeighbor?: NeighborInfo | null
+  isGhost?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'select', book: Book): void
   (e: 'edit', book: Book): void
 }>()
+
+const store = useLibraryStore()
 
 const sizing = computed(() => getBookSizing(props.book, { left: props.leftNeighbor, right: props.rightNeighbor }))
 
@@ -222,10 +228,15 @@ const titleWritingStyle = computed(() => {
 })
 
 function handleDragStart(e: DragEvent) {
+  store.activeDraggingBook = props.book
   if (e.dataTransfer) {
     e.dataTransfer.setData('text/plain', props.book.id)
     e.dataTransfer.effectAllowed = 'move'
   }
+}
+
+function handleDragEnd() {
+  store.activeDraggingBook = null
 }
 
 function handleClick() {

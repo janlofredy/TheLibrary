@@ -12,25 +12,24 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
 
-      <!-- Live Ghost Drag Preview Marker & Ghost Book -->
+      <!-- Live Ghost Drag Preview: Actual Book Spine Ghost + Glowing Snap Line -->
       <template v-if="dragIndicatorX !== null">
         <!-- Vertical Glowing Drop Bar -->
         <div
-          class="absolute bottom-1 w-1 bg-amber-400 rounded-full shadow-[0_0_12px_rgba(251,191,36,0.9)] z-40 pointer-events-none transition-all duration-75"
-          :style="{ left: `${dragIndicatorX}px`, height: '220px' }"
+          class="absolute bottom-0.5 w-1.5 bg-amber-400 rounded-full shadow-[0_0_14px_rgba(251,191,36,1)] z-40 pointer-events-none transition-all duration-75 animate-pulse"
+          :style="{ left: `${dragIndicatorX}px`, height: '240px' }"
         ></div>
 
-        <!-- Ghost Book Outline Preview -->
+        <!-- Ghost Book Spine Preview (Exact book styling, colors, and dimensions) -->
         <div
-          v-if="ghostPreviewBook"
-          class="absolute bottom-0 opacity-60 border-2 border-dashed border-amber-300 rounded pointer-events-none z-30 transition-all duration-75 shadow-2xl scale-[1.02]"
-          :style="{ left: `${dragIndicatorX}px`, width: '38px', height: '225px', backgroundColor: ghostPreviewBook.spineColor }"
+          v-if="store.activeDraggingBook"
+          class="absolute bottom-0 z-30 pointer-events-none transition-all duration-75 scale-[1.03]"
+          :style="{ left: `${dragIndicatorX}px` }"
         >
-          <div class="h-full w-full flex items-center justify-center p-1 overflow-hidden">
-            <span class="text-[10px] uppercase font-bold tracking-widest text-amber-100 rotate-90 whitespace-nowrap">
-              {{ ghostPreviewBook.title }}
-            </span>
-          </div>
+          <BookSpine
+            :book="store.activeDraggingBook"
+            :is-ghost="true"
+          />
         </div>
       </template>
 
@@ -44,6 +43,7 @@
           v-for="item in positionedBooks"
           :key="item.book.id"
           class="absolute bottom-0 flex items-end transition-transform duration-300"
+          :class="store.activeDraggingBook?.id === item.book.id ? 'opacity-30' : ''"
           :style="{ left: `${item.x}px` }"
           @click.stop
         >
@@ -147,14 +147,8 @@ const props = defineProps<{
 const store = useLibraryStore()
 const shelfTrack = ref<HTMLElement | null>(null)
 const dragIndicatorX = ref<number | null>(null)
-const draggingBookId = ref<string | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
-
-const ghostPreviewBook = computed(() => {
-  if (!draggingBookId.value) return null
-  return store.books.find(b => b.id === draggingBookId.value) || null
-})
 
 interface PositionedBook {
   book: Book
@@ -261,15 +255,24 @@ function handleTrackDragOver(e: DragEvent) {
   const scrollLeft = shelfTrack.value.scrollLeft
   const rawX = Math.max(0, e.clientX - rect.left + scrollLeft - 18)
   
-  // Magnetic Snapping: if within 14px of another book's edge, snap snugly (gap = 1px)
+  // Dragging book width
+  const draggingWidth = store.activeDraggingBook 
+    ? calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
+    : 34
+
+  // Magnetic Snapping: when within 18px of an adjacent book, snap cleanly (1px gap)
   let targetX = rawX
   for (const item of positionedBooks.value) {
-    if (Math.abs(rawX - (item.x + item.width)) < 14) {
-      targetX = item.x + item.width + 1 // Snug snap after item
+    if (store.activeDraggingBook && item.book.id === store.activeDraggingBook.id) continue
+
+    // Snap to right edge of item
+    if (Math.abs(rawX - (item.x + item.width)) < 18) {
+      targetX = item.x + item.width + 1
       break
     }
-    if (Math.abs(rawX - (item.x - 38)) < 14) {
-      targetX = Math.max(0, item.x - 39) // Snug snap before item
+    // Snap to left edge of item
+    if (Math.abs(rawX - (item.x - draggingWidth)) < 18) {
+      targetX = Math.max(0, item.x - draggingWidth - 1)
       break
     }
   }
@@ -284,10 +287,12 @@ function handleTrackDragLeave() {
 async function handleTrackDrop(e: DragEvent) {
   const targetX = dragIndicatorX.value
   dragIndicatorX.value = null
-  draggingBookId.value = null
+  const activeBook = store.activeDraggingBook
+  store.activeDraggingBook = null
+
   if (!shelfTrack.value || !e.dataTransfer) return
 
-  const bookId = e.dataTransfer.getData('text/plain')
+  const bookId = e.dataTransfer.getData('text/plain') || activeBook?.id
   if (bookId && targetX !== null) {
     await store.moveBookToPosition(bookId, props.shelf.id, targetX)
   }

@@ -31,6 +31,7 @@ export const useLibraryStore = defineStore('library', () => {
   const editingBook = ref<Book | null>(null)
   const targetShelfIdForNewBook = ref<string | null>(null)
   const editingShelf = ref<Shelf | null>(null)
+  const activeDraggingBook = ref<Book | null>(null)
 
   // Getters
   const currentLibrary = computed(() => {
@@ -499,6 +500,7 @@ export const useLibraryStore = defineStore('library', () => {
     editingBook,
     targetShelfIdForNewBook,
     editingShelf,
+    activeDraggingBook,
     getBooksForShelf,
     init,
     loadAll,
