@@ -22,6 +22,7 @@
   - **1:1 Live Drag Ghost Previews**: Real-time drag preview perfectly mirrors the exact final settled placement upon drop.
 - **📐 Shelf Spot Positioning & Layering**: Place books at precise coordinates with free drag-and-drop or arrange in stacked layers.
 - **🎨 Deep Spine Customization**: Recustomizable spine colors, textures (Ribbed Leather, Gold Foil, Woven Cloth, Modern Matte, Vintage Parchment), title typography, foil colors, and ribbon bookmarks.
+- **🚪 Atmospheric Landing Page & Auth Gate**: Dedicated skeuomorphic entrance with interactive material demos; requires login to provision a pristine, empty personal library (0 pre-populated mock books).
 - **✍️ Tactile Writing Desk**: 3D book-pull animation onto a distraction-free writing desk with paper textures (lined, dotted, parchment) and a rich-text / markdown editor.
 - **⚡ Ultra-Lightweight (Vue Vapor Mode)**: Zero Virtual DOM overhead, <15 KB runtime footprint, silky-smooth 60 FPS GPU-accelerated 3D transforms.
 - **🐙 GitHub as Database & Multi-Provider Auth**: Zero external backend servers needed. Saves directly to your private GitHub repositories with automated version control, with support for linking **Google Login** for 1-click access across devices.

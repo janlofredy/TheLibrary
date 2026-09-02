@@ -180,9 +180,57 @@ The bookshelf implements a deterministic first-principles physical mechanics eng
 - **Editor**: **Tiptap (Vue 3)** (Lightweight, modular block/rich-text editor with markdown shortcut support).
 - **Icons**: **Lucide-Vue-Next** (Tree-shaken feather/lucide icons).
 
-### 4.2 GitHub as Database Architecture
+### 4.2 Authentication, Landing Page & Onboarding Flow
 
-#### **1. Authentication & Multi-Provider Identity Model**
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        NEW VISITOR / UNAUTHENTICATED                   │
+│                                      │                                 │
+│                                      ▼                                 │
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+│ │                         LANDING PAGE                               │ │
+│ │ - Skeuomorphic hero presentation & live feature demo               │ │
+│ │ - "Your Sovereign Digital Sanctuary — Private & Tactile"           │ │
+│ │ - Actions: [Sign in with GitHub]  |  [Sign in with Google]         │ │
+│ └────────────────────────────────────┬───────────────────────────────┘ │
+│                                      │ (Requires Login)                │
+│                                      ▼                                 │
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+│ │                  AUTHENTICATION GATE & PROVISIONING                │ │
+│ │ - Authenticates via GitHub OAuth / PAT (or linked Google)          │ │
+│ │ - Automatically connects/provisions user's private data vault      │ │
+│ │ - Initializes a PRISTINE EMPTY LIBRARY (0 books, 1 empty shelf)    │ │
+│ └────────────────────────────────────┬───────────────────────────────┘ │
+│                                      │                                 │
+│                                      ▼                                 │
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+│ │                    ACTIVE BOOKSHELF / LIBRARY VIEW                 │ │
+│ │ - Pristine wooden shelf with "Create Your First Journal" prompt    │ │
+│ │ - Tactile drag-and-drop, physics leaning, and writing desk         │ │
+│ └────────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### **1. Landing Page Architecture (Unauthenticated State)**
+- When an unauthenticated visitor opens the web app, they are greeted by an atmospheric **Skeuomorphic Landing Page**:
+  - **Visual Hero**: High-resolution dark walnut wooden shelf backdrop with ambient candlelight warmth and tactile 3D spine material previews.
+  - **Core Value Proposition**: Sovereign, private digital journaling with physical books, 2D physics leaning, and GitHub-backed version control.
+  - **Interactive Demos**: Live interactive spine customization preview and 2D physics demo.
+  - **Call to Action**: Prominent **"Sign in with GitHub"** and **"Sign in with Google"** buttons.
+
+#### **2. Mandatory Authentication Gate**
+- Creating a library and accessing the bookshelf workspace **strictly requires user authentication**.
+- Unauthenticated access is restricted to:
+  - The **Landing Page**.
+  - **Public Reader Mode**: Direct URL links to shared books/gists (`/?gist=...` or `/?repo=...&book=...`).
+
+#### **3. Pristine Empty Library Provisioning**
+- When a new user completes authentication for the first time:
+  - The app provisions their personal library (`Personal Sanctuary`) with a single clean shelf (`Main Shelf`).
+  - **Strictly Empty Initialization**: The library contains **ZERO pre-populated books** ($0$ volumes), giving the user a clean slate.
+  - An inviting, skeuomorphic **"Add Your First Journal"** prompt appears centered on the empty shelf ledge, guiding the user to design their first journal.
+
+#### **4. Multi-Provider Identity Model**
 - **Primary Onboarding (GitHub)**:
   - Users sign up and establish their journal storage vault via GitHub (GitHub OAuth or Personal Access Token).
   - Automatically provisions the user's private data repository (e.g., `the-journal-vault`).
@@ -453,7 +501,22 @@ jobs:
   - Procedural wood shelves (Walnut, Oak, Mahogany, Midnight) with drop shadows and metallic nameplates.
   - Custom Book Spine component with dynamic thickness scaling formula ($W_{\min} = 28\text{px}$, $W_{\max} = 110\text{px}$).
   - Spine customizer: Hex color picker, finishes (leather, cloth, foil), typography, and ribbon bookmarks.
+- Build the **First-Principles 2D Bookshelf Physics Engine**:
+  - Dynamic gap-spanning lean angles, height-differential tilt, mutual A-frame arches, cascading domino support, and outward stack/wall fall-to-flat mechanics.
+  - 1:1 live drag ghost preview overlay.
 - Setup **Dexie.js / IndexedDB** local database for 0ms instant local reads/writes.
+
+### Phase 1.5: Landing Page, Authentication Gate & Empty Library Provisioning (Next Phase)
+- **Landing Page (`LandingView.vue`)**:
+  - Atmospheric skeuomorphic hero section with rich wood textures, ambient lighting, and interactive 3D spine material previews.
+  - Clear value proposition showcasing physical tactile books, 2D physics leaning, and GitHub-backed sovereignty.
+  - **"Sign in with GitHub"** and **"Sign in with Google"** authentication triggers.
+- **Authentication Gate**:
+  - Restrict library access to authenticated users; route unauthenticated visitors to Landing Page.
+  - Preserve public read-only access for shared Gists and reader links.
+- **Pristine Empty Library Provisioning**:
+  - When a new user authenticates for the first time, initialize an **Empty Library** with 1 clean shelf and **zero pre-populated books** ($0$ books).
+  - Design an elegant, tactile **"Add Your First Journal"** prompt centered on the empty shelf ledge.
 
 ### Phase 2: Writing Desk & Page Editor
 - Implement the **3D Book-Pull Animation** (smooth transition from shelf to writing desk).
