@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "./skeuomorphic.css";
+
+/* Global custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #15100c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3d2a1d;
+  border-radius: 4px;
+  border: 1px solid #23160e;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5a3e2b;
+}

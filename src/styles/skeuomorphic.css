@@ -1,0 +1,219 @@
+/* Skeuomorphic Materials, Textures, Shaders & 3D Lighting */
+
+/* 1. WOOD FINISHES */
+.wood-walnut {
+  background-color: #24160f;
+  background-image: 
+    linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 5%, rgba(0,0,0,0) 95%, rgba(0,0,0,0.4) 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
+    linear-gradient(180deg, #1c100a 0%, #2e1c13 50%, #170d08 100%);
+}
+
+.wood-oak {
+  background-color: #5c3a1e;
+  background-image: 
+    linear-gradient(90deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 5%, rgba(0,0,0,0) 95%, rgba(0,0,0,0.3) 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 5px),
+    linear-gradient(180deg, #4d3018 0%, #6e4624 50%, #3d2512 100%);
+}
+
+.wood-mahogany {
+  background-color: #38120f;
+  background-image: 
+    linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 5%, rgba(0,0,0,0) 95%, rgba(0,0,0,0.4) 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px),
+    linear-gradient(180deg, #2b0c0a 0%, #4a1914 50%, #200806 100%);
+}
+
+.wood-birch {
+  background-color: #8c7355;
+  background-image: 
+    linear-gradient(90deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 5%, rgba(0,0,0,0) 95%, rgba(0,0,0,0.2) 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px),
+    linear-gradient(180deg, #786146 0%, #9e8464 50%, #69533a 100%);
+}
+
+.wood-midnight {
+  background-color: #12151c;
+  background-image: 
+    linear-gradient(90deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 5%, rgba(0,0,0,0) 95%, rgba(0,0,0,0.6) 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.01) 0px, rgba(255,255,255,0.01) 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
+    linear-gradient(180deg, #0d1017 0%, #1a1e29 50%, #0a0c12 100%);
+}
+
+/* Shelf Top Lip & Bottom Shadow */
+.shelf-plank {
+  box-shadow: 
+    inset 0 2px 4px rgba(255, 255, 255, 0.15),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+    0 12px 24px -4px rgba(0, 0, 0, 0.8),
+    0 4px 6px -2px rgba(0, 0, 0, 0.5);
+}
+
+.shelf-depth-shadow {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.25) 30%, rgba(0, 0, 0, 0) 100%);
+}
+
+.shelf-base-shadow {
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 15px, rgba(0, 0, 0, 0) 40px);
+}
+
+/* 2. METALLIC NAMEPLATES */
+.plate-brass {
+  background: linear-gradient(135deg, #ffd778 0%, #d4af37 40%, #aa820a 70%, #ffd778 100%);
+  color: #3b2203;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 2px 5px rgba(0,0,0,0.6),
+    inset 0 1px 1px rgba(255,255,255,0.8),
+    inset 0 -1px 2px rgba(0,0,0,0.4);
+  border: 1px solid #94710b;
+}
+
+.plate-silver {
+  background: linear-gradient(135deg, #ffffff 0%, #dcdde1 40%, #95a5a6 70%, #f5f6fa 100%);
+  color: #2c3e50;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    0 2px 5px rgba(0,0,0,0.6),
+    inset 0 1px 1px rgba(255,255,255,0.9),
+    inset 0 -1px 2px rgba(0,0,0,0.3);
+  border: 1px solid #7f8c8d;
+}
+
+.plate-matte-black {
+  background: linear-gradient(135deg, #2c3440 0%, #1e242d 50%, #151a21 100%);
+  color: #d1d5db;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.8);
+  box-shadow: 
+    0 2px 5px rgba(0,0,0,0.7),
+    inset 0 1px 1px rgba(255,255,255,0.1),
+    inset 0 -1px 2px rgba(0,0,0,0.6);
+  border: 1px solid #374151;
+}
+
+.plate-bronze {
+  background: linear-gradient(135deg, #d49a6a 0%, #a2653e 40%, #6e3d1c 70%, #c48658 100%);
+  color: #2a1508;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 2px 5px rgba(0,0,0,0.6),
+    inset 0 1px 1px rgba(255,255,255,0.6),
+    inset 0 -1px 2px rgba(0,0,0,0.5);
+  border: 1px solid #5a3116;
+}
+
+/* 3. BOOK SPINE FINISHES & SHADERS */
+
+/* Base 3D Spine Cylindrical Lighting */
+.spine-3d-lighting {
+  box-shadow: 
+    inset 4px 0 6px -2px rgba(255, 255, 255, 0.25),
+    inset -4px 0 8px -2px rgba(0, 0, 0, 0.6),
+    inset 0 4px 6px -2px rgba(255, 255, 255, 0.15),
+    inset 0 -6px 8px -2px rgba(0, 0, 0, 0.7),
+    4px 10px 18px -2px rgba(0, 0, 0, 0.65),
+    1px 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Ribbed Leather Finish */
+.spine-finish-ribbed-leather {
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 18px,
+      rgba(0, 0, 0, 0.4) 18px,
+      rgba(255, 255, 255, 0.25) 20px,
+      rgba(0, 0, 0, 0.5) 23px,
+      transparent 24px
+    ),
+    radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.3) 100%);
+}
+
+/* Gold Foil Filigree Finish */
+.spine-finish-gold-foil {
+  background-image: 
+    linear-gradient(180deg, rgba(212, 175, 55, 0.4) 0%, transparent 12%, transparent 88%, rgba(212, 175, 55, 0.4) 100%),
+    repeating-linear-gradient(0deg, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.25) 40px, rgba(212, 175, 55, 0.25) 42px, transparent 42px);
+  border-left: 1px solid rgba(255, 215, 0, 0.3);
+  border-right: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+/* Woven Linen Cloth Finish */
+.spine-finish-woven-cloth {
+  background-image: 
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 2px, transparent 2px, transparent 4px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.06) 0px, rgba(255, 255, 255, 0.06) 2px, transparent 2px, transparent 4px);
+}
+
+/* Modern Matte Finish */
+.spine-finish-modern-matte {
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 25%, transparent 60%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+/* Vintage Parchment Finish */
+.spine-finish-vintage-parchment {
+  background-image: 
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 70% 80%, rgba(0, 0, 0, 0.25) 0%, transparent 50%),
+    linear-gradient(90deg, rgba(0,0,0,0.15) 0%, transparent 50%, rgba(0,0,0,0.2) 100%);
+}
+
+/* 4. TITLE FOIL TYPOGRAPHY */
+.title-foil-gold {
+  color: #ffd700;
+  text-shadow: 
+    0 1px 1px rgba(0, 0, 0, 0.9),
+    0 0 4px rgba(255, 215, 0, 0.6);
+}
+
+.title-foil-silver {
+  color: #f1f2f6;
+  text-shadow: 
+    0 1px 1px rgba(0, 0, 0, 0.9),
+    0 0 3px rgba(255, 255, 255, 0.5);
+}
+
+.title-foil-copper {
+  color: #e09462;
+  text-shadow: 
+    0 1px 1px rgba(0, 0, 0, 0.9),
+    0 0 3px rgba(205, 127, 50, 0.5);
+}
+
+.title-foil-white {
+  color: #f8fafc;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.title-foil-black {
+  color: #18181b;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* 5. RIBBON BOOKMARK */
+.ribbon-tail {
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 50% 80%, 0% 100%);
+}
+
+/* 6. FONT FAMILIES */
+.font-serif-book {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-roman-book {
+  font-family: 'Cinzel', 'Times New Roman', serif;
+}
+
+.font-typewriter-book {
+  font-family: 'Special Elite', 'Fira Code', monospace;
+}
+
+.font-calligraphy-book {
+  font-family: 'Caveat', cursive;
+}
+
+.font-sans-book {
+  font-family: 'Inter', system-ui, sans-serif;
+}
