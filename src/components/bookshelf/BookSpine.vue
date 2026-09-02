@@ -158,7 +158,7 @@ const store = useLibraryStore()
 const sizing = computed(() => getBookSizing(props.book, { left: props.leftNeighbor, right: props.rightNeighbor }))
 
 const containerWrapperStyle = computed(() => {
-  const { width, height, rotationDeg, floorLift, isFlat } = sizing.value
+  const { width, height, rotationDeg, isFlat } = sizing.value
   
   if (isFlat) {
     return {
@@ -174,8 +174,9 @@ const containerWrapperStyle = computed(() => {
   let zIndex = 10
 
   if (rotationDeg !== 0) {
-    transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
-    transformOrigin = rotationDeg > 0 ? 'bottom left' : 'bottom right'
+    transform = `rotate(${rotationDeg}deg)`
+    // Leaning right pivots on bottom right; leaning left pivots on bottom left
+    transformOrigin = rotationDeg > 0 ? 'bottom right' : 'bottom left'
     zIndex = 20
   }
 

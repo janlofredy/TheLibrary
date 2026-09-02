@@ -63,67 +63,12 @@ export interface NeighborInfo {
 }
 
 /**
- * Calculates the exact trigonometric lean angle required for a book of height H and width W
- * to rotate around its bottom corner and span the exact gap to hit a standing neighbor.
- * Solves: H * sin(theta) + W * (cos(theta) - 1) = gap
- */
-export function computePreciseLeanAngle(gap: number, H: number, W: number): number {
-  if (gap < 2) return 0
-  
-  // Initial estimate
-  let sinTheta = Math.min(0.96, gap / H)
-  let theta = Math.asin(sinTheta)
-  
-  // Newton-Raphson refinement for width & cosine offset compensation
-  for (let step = 0; step < 2; step++) {
-    const reach = H * Math.sin(theta) + W * (Math.cos(theta) - 1)
-    const error = gap - reach
-    const dReach = H * Math.cos(theta) - W * Math.sin(theta)
-    if (Math.abs(dReach) > 5) {
-      theta = Math.max(0, Math.min(1.35, theta + error / dReach))
-    }
-  }
-  
-  return Number(((theta * 180) / Math.PI).toFixed(1))
-}
-
-/**
- * Computes the exact physical contact angle for a standing book resting its body
- * against the top-edge corner of an adjacent flat book (height H_flat).
- * Solves: (W + gap) * cos(theta) - H_flat * sin(theta) = W
- */
-export function computeFlatBookLeanAngle(gap: number, flatHeight: number, spineWidth: number): number {
-  const H_flat = Math.max(26, flatHeight)
-  const W = spineWidth
-  
-  if (gap < 2) {
-    // Resting snugly against adjacent flat book corner
-    return 7.5
-  }
-
-  // Initial estimate based on triangle to flat corner
-  let theta = Math.atan2(gap, H_flat)
-  
-  // Newton-Raphson refinement for exact contact between rotated edge and (W + gap, H_flat)
-  for (let step = 0; step < 3; step++) {
-    const cosT = Math.cos(theta)
-    const sinT = Math.sin(theta)
-    const f = (W + gap) * cosT - H_flat * sinT - W
-    const df = -(W + gap) * sinT - H_flat * cosT
-    if (Math.abs(df) > 1) {
-      theta = Math.max(0.05, Math.min(0.72, theta - f / df)) // Bounded to max ~41 deg
-    }
-  }
-  
-  return Number(((theta * 180) / Math.PI).toFixed(1))
-}
-
-/**
  * Computes full sizing according to the formal physics specification:
- * 1. Flat Book Resting Contact: Standing books leaning towards flat books rest their body against the flat book's raised corner with zero air.
- * 2. Cascading Domino Physics: Leaning towards an already-tilted neighbor spans the tilted neighbor's shifted surface.
- * 3. Tight neighbor cascades (distance <= 8px) adopt parallel domino tilt for snug contact along their full spine face.
- * 4. Open spaces (distance >= flatBookLength) safely fall flat on the shelf floor.
+ * 1. Pivots on bottom-right when leaning right; pivots on bottom-left when leaning left.
+ * 2. Flat Books: Leaning against a flat book calculates exact corner contact: theta = arctan(gap / H_flat).
+ * 3. Standing Books: Leaning against a standing book calculates exact top contact: theta = arcsin(gap / H).
+ * 4. Cascading Domino Physics: Adopts neighbor's lean angle for parallel stacks or spans total gap.
+ * 5. Open spaces (gap >= flatBookLength or > 28px for flat neighbor) safely fall flat on the shelf floor.
  */
 export function getBookSizing(
   book: Book,
@@ -190,7 +135,7 @@ export function getBookSizing(
   if (leanDir === 'right') {
     const neighbor = neighbors?.right
     
-    // If no neighbor on the right or the gap is wider than the book's full height -> falls flat cleanly
+    // If no neighbor on the right or gap is wider than the book's full height -> falls flat cleanly
     if (!neighbor || neighbor.distance >= flatBookLength) {
       return {
         width: flatBookLength,
@@ -205,15 +150,33 @@ export function getBookSizing(
 
     // Leaning on a flat book to the right
     if (neighbor.isFlat) {
-      const angleDeg = computeFlatBookLeanAngle(neighbor.distance, neighbor.height, spineThickness)
-      const angleRad = (angleDeg * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+      const H_flat = Math.max(26, neighbor.height)
+      const gap = Math.max(0, neighbor.distance)
+
+      // If gap is too large to lean on the thin flat book's corner (> 28px), it falls flat
+      if (gap > 28) {
+        return {
+          width: flatBookLength,
+          height: spineThickness,
+          rotationDeg: 0,
+          floorLift: 0,
+          canTilt: true,
+          isFlat: true,
+          topEdgeDetail: true,
+        }
+      }
+
+      // Exact corner contact angle: tan(theta) = gap / H_flat
+      const angleRad = gap < 2 
+        ? 0.12 // ~7deg gentle resting contact when flush
+        : Math.min(0.68, Math.atan2(gap, H_flat))
+      const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
 
       return {
         width: spineThickness,
         height: fullBookHeight,
         rotationDeg: angleDeg,
-        floorLift,
+        floorLift: 0,
         canTilt: true,
         isFlat: false,
         topEdgeDetail: false,
@@ -226,34 +189,27 @@ export function getBookSizing(
     if (neighborAngle > 0) {
       // Neighbor is ALSO leaning to the right! (Cascading domino stack)
       if (neighbor.distance <= 8) {
-        // Snug parallel domino lean resting along neighbor's tilted face
-        const angleDeg = neighborAngle
-        const angleRad = (angleDeg * Math.PI) / 180
-        const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-
         return {
           width: spineThickness,
           height: fullBookHeight,
-          rotationDeg: angleDeg,
-          floorLift,
+          rotationDeg: neighborAngle,
+          floorLift: 0,
           canTilt: true,
           isFlat: false,
           topEdgeDetail: false,
         }
       }
 
-      // Spanned gap taking neighbor's shifted top into account
       const neighborTopShift = neighbor.height * Math.sin((neighborAngle * Math.PI) / 180)
       const totalGap = neighbor.distance + neighborTopShift
-      const angleDeg = computePreciseLeanAngle(totalGap, fullBookHeight, spineThickness)
-      const angleRad = (angleDeg * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+      const sinTheta = Math.min(0.92, totalGap / fullBookHeight)
+      const angleDeg = Number(((Math.asin(sinTheta) * 180) / Math.PI).toFixed(1))
 
       return {
         width: spineThickness,
         height: fullBookHeight,
         rotationDeg: angleDeg,
-        floorLift,
+        floorLift: 0,
         canTilt: true,
         isFlat: false,
         topEdgeDetail: false,
@@ -274,15 +230,14 @@ export function getBookSizing(
       }
     }
 
-    const angleDeg = computePreciseLeanAngle(gap, fullBookHeight, spineThickness)
-    const angleRad = (angleDeg * Math.PI) / 180
-    const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+    const sinTheta = Math.min(0.92, gap / fullBookHeight)
+    const angleDeg = Number(((Math.asin(sinTheta) * 180) / Math.PI).toFixed(1))
 
     return {
       width: spineThickness,
       height: fullBookHeight,
       rotationDeg: angleDeg,
-      floorLift,
+      floorLift: 0,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,
@@ -293,15 +248,11 @@ export function getBookSizing(
     const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
     
     if (isAgainstLeftWall) {
-      const baseAngle = 6.5
-      const rad = baseAngle * (Math.PI / 180)
-      const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
-
       return {
         width: spineThickness,
         height: fullBookHeight,
-        rotationDeg: -baseAngle,
-        floorLift,
+        rotationDeg: -6.5,
+        floorLift: 0,
         canTilt: true,
         isFlat: false,
         topEdgeDetail: false,
@@ -320,16 +271,33 @@ export function getBookSizing(
       }
     }
 
+    // Leaning on a flat book to the left
     if (neighbor.isFlat) {
-      const angleDeg = computeFlatBookLeanAngle(neighbor.distance, neighbor.height, spineThickness)
-      const angleRad = (angleDeg * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+      const H_flat = Math.max(26, neighbor.height)
+      const gap = Math.max(0, neighbor.distance)
+
+      if (gap > 28) {
+        return {
+          width: flatBookLength,
+          height: spineThickness,
+          rotationDeg: 0,
+          floorLift: 0,
+          canTilt: true,
+          isFlat: true,
+          topEdgeDetail: true,
+        }
+      }
+
+      const angleRad = gap < 2 
+        ? 0.12 
+        : Math.min(0.68, Math.atan2(gap, H_flat))
+      const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
 
       return {
         width: spineThickness,
         height: fullBookHeight,
         rotationDeg: -angleDeg,
-        floorLift,
+        floorLift: 0,
         canTilt: true,
         isFlat: false,
         topEdgeDetail: false,
@@ -342,15 +310,11 @@ export function getBookSizing(
     if (neighborAngle < 0) {
       // Neighbor is ALSO leaning to the left! (Cascading domino stack)
       if (neighbor.distance <= 8) {
-        const angleDeg = neighborAngle
-        const angleRad = (Math.abs(angleDeg) * Math.PI) / 180
-        const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
-
         return {
           width: spineThickness,
           height: fullBookHeight,
-          rotationDeg: angleDeg,
-          floorLift,
+          rotationDeg: neighborAngle,
+          floorLift: 0,
           canTilt: true,
           isFlat: false,
           topEdgeDetail: false,
@@ -359,15 +323,14 @@ export function getBookSizing(
 
       const neighborTopShift = neighbor.height * Math.sin((Math.abs(neighborAngle) * Math.PI) / 180)
       const totalGap = neighbor.distance + neighborTopShift
-      const angleDeg = computePreciseLeanAngle(totalGap, fullBookHeight, spineThickness)
-      const angleRad = (angleDeg * Math.PI) / 180
-      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+      const sinTheta = Math.min(0.92, totalGap / fullBookHeight)
+      const angleDeg = Number(((Math.asin(sinTheta) * 180) / Math.PI).toFixed(1))
 
       return {
         width: spineThickness,
         height: fullBookHeight,
         rotationDeg: -angleDeg,
-        floorLift,
+        floorLift: 0,
         canTilt: true,
         isFlat: false,
         topEdgeDetail: false,
@@ -387,15 +350,14 @@ export function getBookSizing(
       }
     }
 
-    const angleDeg = computePreciseLeanAngle(gap, fullBookHeight, spineThickness)
-    const angleRad = (angleDeg * Math.PI) / 180
-    const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+    const sinTheta = Math.min(0.92, gap / fullBookHeight)
+    const angleDeg = Number(((Math.asin(sinTheta) * 180) / Math.PI).toFixed(1))
 
     return {
       width: spineThickness,
       height: fullBookHeight,
       rotationDeg: -angleDeg,
-      floorLift,
+      floorLift: 0,
       canTilt: true,
       isFlat: false,
       topEdgeDetail: false,
