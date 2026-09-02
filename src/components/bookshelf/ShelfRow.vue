@@ -347,38 +347,42 @@ function resolveNonOverlappingPosition(
   const items = existingItems.filter(item => !draggingBookId || item.book.id !== draggingBookId)
   if (items.length === 0) return x
 
-  // Sort items from left to right
-  const sorted = [...items].sort((a, b) => a.x - b.x)
+  // Check if proposed x intersects any existing book base
+  const overlapping = items.find(item => x < item.x + item.width && x + draggingW > item.x)
+  if (!overlapping) return x
 
-  // Iteratively resolve collision with any overlapping book base
-  for (let iter = 0; iter < 3; iter++) {
-    let hadOverlap = false
-    for (const item of sorted) {
-      const itemLeft = item.x
-      const itemRight = item.x + item.width
+  // Find candidate snap coordinates (flush left or flush right)
+  const snapLeft = Math.max(0, overlapping.x - draggingW)
+  const snapRight = Math.min(maxAllowedX, overlapping.x + overlapping.width)
 
-      const dragLeft = x
-      const dragRight = x + draggingW
+  const leftCollides = items.some(item => item.book.id !== overlapping.book.id && snapLeft < item.x + item.width && snapLeft + draggingW > item.x)
+  const rightCollides = items.some(item => item.book.id !== overlapping.book.id && snapRight < item.x + item.width && snapRight + draggingW > item.x)
 
-      // Overlap detected when base interval intersects
-      if (dragLeft < itemRight && dragRight > itemLeft) {
-        hadOverlap = true
-        const dragCenter = dragLeft + draggingW / 2
-        const itemCenter = itemLeft + item.width / 2
-
-        if (dragCenter < itemCenter && itemLeft >= draggingW) {
-          // Snap flush to left base of item (straightens leaning books upright)
-          x = Math.max(0, itemLeft - draggingW)
-        } else {
-          // Snap flush to right base of item (clamped to shelf right edge)
-          x = Math.min(maxAllowedX, itemRight)
-        }
-      }
-    }
-    if (!hadOverlap) break
+  if (!leftCollides && !rightCollides) {
+    const distLeft = Math.abs(snapLeft - proposedX)
+    const distRight = Math.abs(snapRight - proposedX)
+    return distLeft <= distRight ? snapLeft : snapRight
   }
 
-  return x
+  if (!leftCollides) return snapLeft
+  if (!rightCollides) return snapRight
+
+  // Search for nearest free gap across the shelf
+  let bestX = snapRight
+  let minDiff = Infinity
+
+  for (let cand = 0; cand <= maxAllowedX; cand += 4) {
+    const collides = items.some(item => cand < item.x + item.width && cand + draggingW > item.x)
+    if (!collides) {
+      const diff = Math.abs(cand - proposedX)
+      if (diff < minDiff) {
+        minDiff = diff
+        bestX = cand
+      }
+    }
+  }
+
+  return bestX
 }
 
 function handleTrackDragOver(e: DragEvent) {
