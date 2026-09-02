@@ -69,13 +69,12 @@ export interface NeighborInfo {
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
  * 4. End-of-Stack Leaning: A book at the end of a packed stack must lean OUTWARD into the open space.
  * 5. Shelf Wall Leaning:
- *    - Flush against left wall (X <= 8px): leans right (+5.5 deg) into open space.
- *    - Flush against right wall (dist <= 8px): leans left (-5.5 deg) into open space.
- *    - Gap to wall (8px < gap <= 35px): tilts into the wall.
- * 6. Dynamic Height-Aware Gap-Spanning: Taller books lean more to contact shorter neighbors.
+ *    - Gap to left wall (8px < gap <= 35px): tilts into the left wall.
+ *    - Gap to right wall (8px < gap <= 35px): tilts into the right wall.
+ * 6. Dynamic Height-Aware Gap-Spanning: Taller/shorter books calculate exact reach angle so the top physically touches the neighbor.
  * 7. Height-Aware Mutual Lean / A-Frame: Two books leaning toward each other form an arch.
  * 8. Cascading Domino Support: Spans neighbor's shifted top surface.
- * 9. Solitary Open Floor: Rests at a natural tilt (±8.5 deg).
+ * 9. Fall-to-Flat Rule: Unsupported solitary volumes on open floor lie flat on the shelf floor.
  */
 export function getBookSizing(
   book: Book,
@@ -128,40 +127,12 @@ export function getBookSizing(
   }
 
   const posX = book.positionX ?? 0
-  const isFlushLeftWall = Boolean(book.positionX !== undefined && posX <= 8)
   const isGapLeftWall = Boolean(book.positionX !== undefined && posX > 8 && posX <= 35)
 
   const distToRightWall = shelfWidth !== undefined && book.positionX !== undefined 
     ? Math.max(0, shelfWidth - (posX + W)) 
     : Infinity
-  const isFlushRightWall = Boolean(distToRightWall <= 8)
   const isGapRightWall = Boolean(distToRightWall > 8 && distToRightWall <= 35)
-
-  // Wall-flush books lean away from the wall into the open room
-  if (isFlushLeftWall && (!neighbors?.right || neighbors.right.distance > 12)) {
-    const rad = (5.5 * Math.PI) / 180
-    return {
-      width: W,
-      height: H,
-      rotationDeg: 5.5,
-      floorLift: Math.ceil(W * Math.sin(rad)) + 1,
-      canTilt: true,
-      isFlat: false,
-      topEdgeDetail: false,
-    }
-  }
-  if (isFlushRightWall && (!neighbors?.left || neighbors.left.distance > 12)) {
-    const rad = (5.5 * Math.PI) / 180
-    return {
-      width: W,
-      height: H,
-      rotationDeg: -5.5,
-      floorLift: Math.ceil(W * Math.sin(rad)) + 1,
-      canTilt: true,
-      isFlat: false,
-      topEdgeDetail: false,
-    }
-  }
 
   const hasLeftSupport = isGapLeftWall || Boolean(neighbors?.left && neighbors.left.distance < H)
   const hasRightSupport = isGapRightWall || Boolean(neighbors?.right && neighbors.right.distance < H)
@@ -173,10 +144,10 @@ export function getBookSizing(
   } else if (book.layerMode === 'leaning-right') {
     leanDir = 'right'
   } else if (hasTightLeft && !hasTightRight) {
-    // Back supported by left stack -> must lean RIGHT into the open space
+    // Back supported by left stack -> must lean RIGHT into open space
     leanDir = 'right'
   } else if (hasTightRight && !hasTightLeft) {
-    // Back supported by right stack -> must lean LEFT into the open space
+    // Back supported by right stack -> must lean LEFT into open space
     leanDir = 'left'
   } else if (hasLeftSupport && !hasRightSupport) {
     leanDir = 'left'
@@ -220,35 +191,44 @@ export function getBookSizing(
     }
   }
 
-  // 7. Solitary / Open Floor (no neighbor within H) -> Always lean at natural resting angle
+  // 7. Unsupported Solitary Open Floor (no neighbor within H) -> Fall Flat
   if (!neighbor || neighbor.distance >= H) {
-    const angleDeg = 8.5
-    const angleRad = (angleDeg * Math.PI) / 180
-    const sign = leanDir === 'right' ? 1 : -1
     return {
-      width: W,
-      height: H,
-      rotationDeg: sign * angleDeg,
-      floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
+      width: H,
+      height: W,
+      rotationDeg: 0,
+      floorLift: 0,
       canTilt: true,
-      isFlat: false,
-      topEdgeDetail: false,
+      isFlat: true,
+      topEdgeDetail: true,
     }
   }
 
   // 8. Flat Book Contact (Flat book on floor)
   const isNeighborFlatVolume = neighbor.isFlat || (neighbor.width > 60 && neighbor.height <= 45)
   if (isNeighborFlatVolume) {
-    const angleRad = (5.5 * Math.PI) / 180
-    const sign = leanDir === 'right' ? 1 : -1
-    return {
-      width: W,
-      height: H,
-      rotationDeg: sign * 5.5,
-      floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
-      canTilt: true,
-      isFlat: false,
-      topEdgeDetail: false,
+    if (neighbor.distance <= 12) {
+      const angleRad = (5.5 * Math.PI) / 180
+      const sign = leanDir === 'right' ? 1 : -1
+      return {
+        width: W,
+        height: H,
+        rotationDeg: sign * 5.5,
+        floorLift: Math.ceil(W * Math.sin(angleRad)) + 1,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    } else {
+      return {
+        width: H,
+        height: W,
+        rotationDeg: 0,
+        floorLift: 0,
+        canTilt: true,
+        isFlat: true,
+        topEdgeDetail: true,
+      }
     }
   }
 
