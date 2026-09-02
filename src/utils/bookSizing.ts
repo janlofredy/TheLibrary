@@ -74,7 +74,7 @@ export function getBookSizing(
 ): BookSizing {
   const spineThickness = calculateSpineWidth(book.pageCount || 0)
   const fullBookHeight = calculateBookHeight(book.id)
-  const flatBookLength = Math.min(210, Math.max(170, Math.round(fullBookHeight * 0.82)))
+  const flatBookLength = fullBookHeight
 
   // 1. Explicit Horizontal Flat Book Mode
   if (book.layerMode === 'horizontal-stack') {

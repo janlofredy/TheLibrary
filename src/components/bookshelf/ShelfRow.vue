@@ -174,7 +174,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     const isExplicitFlat = book.layerMode === 'horizontal-stack'
     const spineW = calculateSpineWidth(book.pageCount || 0)
     const bookH = calculateBookHeight(book.id)
-    const flatLength = Math.min(210, Math.max(170, Math.round(bookH * 0.82)))
+    const flatLength = bookH
     const bookWidth = isExplicitFlat ? flatLength : spineW
     const bookHeight = isExplicitFlat ? spineW : bookH
 
