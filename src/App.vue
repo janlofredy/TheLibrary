@@ -14,7 +14,7 @@
 
     <!-- Main App Content -->
     <template v-else>
-      <!-- Writing Desk Mode (When a Book is open) -->
+      <!-- Writing Desk Mode (When a Book is open and animation finished) -->
       <WritingDesk v-if="store.activeOpenedBookId" />
 
       <!-- Bookshelf Browsing Mode -->
@@ -24,6 +24,14 @@
           <BookshelfView />
         </main>
       </template>
+
+      <!-- 3D Book Pull & Opening Transition Scene -->
+      <BookOpeningScene
+        v-if="store.isOpeningAnimationActive && store.openingBook"
+        :book="store.openingBook"
+        mode="opening"
+        @complete="store.completeOpeningAnimation"
+      />
 
       <!-- Modals -->
       <BookCustomizerModal />
@@ -40,6 +48,7 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import Navbar from '@/components/common/Navbar.vue'
 import BookshelfView from '@/components/bookshelf/BookshelfView.vue'
 import WritingDesk from '@/components/desk/WritingDesk.vue'
+import BookOpeningScene from '@/components/bookshelf/BookOpeningScene.vue'
 import BookCustomizerModal from '@/components/customizer/BookCustomizerModal.vue'
 import ShelfModal from '@/components/customizer/ShelfModal.vue'
 import LibraryModal from '@/components/customizer/LibraryModal.vue'

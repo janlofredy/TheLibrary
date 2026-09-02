@@ -257,7 +257,32 @@
   );
 }
 
-/* 7. FONT FAMILIES */
+/* 7. 3D BOOK PULL & OPENING ANIMATIONS */
+.perspective-stage {
+  perspective: 1600px;
+  perspective-origin: 50% 50%;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.book-cover-unfold {
+  transform-origin: left center;
+  transition: transform 0.75s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.book-page-turn-left {
+  transform-origin: left center;
+  transition: transform 0.65s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.book-page-turn-right {
+  transform-origin: right center;
+  transition: transform 0.65s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* 8. FONT FAMILIES */
 .font-serif-book {
   font-family: 'Playfair Display', Georgia, serif;
 }

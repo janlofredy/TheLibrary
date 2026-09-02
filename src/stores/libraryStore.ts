@@ -16,6 +16,8 @@ export const useLibraryStore = defineStore('library', () => {
   const activeOpenedBookId = ref<string | null>(null)
   const activePages = ref<Page[]>([])
   const currentPageIndex = ref<number>(0)
+  const openingBook = ref<Book | null>(null)
+  const isOpeningAnimationActive = ref(false)
 
   // UI Modals state
   const isBookCustomizerOpen = ref(false)
@@ -264,11 +266,15 @@ export const useLibraryStore = defineStore('library', () => {
 
   // Desk and Page Actions
   async function openBook(bookId: string) {
-    activeOpenedBookId.value = bookId
+    const targetBook = books.value.find(b => b.id === bookId)
+    if (!targetBook) return
+
+    openingBook.value = targetBook
+    isOpeningAnimationActive.value = true
+
+    // Load pages in the background ready for desk reveal
     const pages = await db.pages.where('bookId').equals(bookId).sortBy('pageNumber')
-    
     if (pages.length === 0) {
-      // Create first starter page if empty
       const now = new Date().toISOString()
       const starterPage: Page = {
         id: `pg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -292,6 +298,11 @@ export const useLibraryStore = defineStore('library', () => {
     currentPageIndex.value = 0
   }
 
+  function completeOpeningAnimation() {
+    isOpeningAnimationActive.value = false
+    activeOpenedBookId.value = openingBook.value?.id || null
+  }
+
   async function closeBook() {
     if (activeOpenedBookId.value) {
       // Synchronize final page count to book record
@@ -299,6 +310,8 @@ export const useLibraryStore = defineStore('library', () => {
       await updateBook(activeOpenedBookId.value, { pageCount: actualCount })
     }
     activeOpenedBookId.value = null
+    openingBook.value = null
+    isOpeningAnimationActive.value = false
     activePages.value = []
     currentPageIndex.value = 0
   }
@@ -433,6 +446,9 @@ export const useLibraryStore = defineStore('library', () => {
     books,
     activeOpenedBookId,
     activeOpenedBook,
+    openingBook,
+    isOpeningAnimationActive,
+    completeOpeningAnimation,
     activePages,
     currentPageIndex,
     currentPage,
