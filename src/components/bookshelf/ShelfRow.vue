@@ -12,38 +12,50 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
 
-      <!-- Live Ghost Drag Preview: Actual Book Spine Ghost + Glowing Snap Line -->
-      <template v-if="dragIndicatorX !== null">
-        <!-- Vertical Glowing Drop Bar -->
+      <!-- Live Ghost Drag Preview (Full-Width Ghost Book Silhouette with Glowing Box) -->
+      <div
+        v-if="dragIndicatorX !== null && store.activeDraggingBook"
+        class="absolute bottom-0 z-40 pointer-events-none transition-all duration-75 scale-[1.02]"
+        :style="{ left: `${dragIndicatorX}px` }"
+      >
+        <!-- Full-Width Glowing Target Box Preview -->
         <div
-          class="absolute bottom-0.5 w-1.5 bg-amber-400 rounded-full shadow-[0_0_14px_rgba(251,191,36,1)] z-40 pointer-events-none transition-all duration-75 animate-pulse"
-          :style="{ left: `${dragIndicatorX}px`, height: '240px' }"
-        ></div>
-
-        <!-- Ghost Book Spine Preview (Exact book styling, colors, and dimensions) -->
-        <div
-          v-if="store.activeDraggingBook"
-          class="absolute bottom-0 z-30 pointer-events-none transition-all duration-75 scale-[1.03]"
-          :style="{ left: `${dragIndicatorX}px` }"
+          class="relative rounded border-2 border-dashed border-amber-300 bg-amber-400/25 shadow-[0_0_16px_rgba(251,191,36,0.6)] backdrop-blur-[1px] flex flex-col items-center justify-between p-2"
+          :style="{ width: `${dragGhostDimensions.width}px`, height: `${dragGhostDimensions.height}px` }"
         >
-          <BookSpine
-            :book="store.activeDraggingBook"
-            :is-ghost="true"
-          />
+          <!-- Top Ornament -->
+          <div class="text-[9px] font-mono uppercase text-amber-200 tracking-wider font-bold">
+            Drop
+          </div>
+
+          <!-- Vertical / Horizontal Title -->
+          <div class="flex-1 flex items-center justify-center overflow-hidden my-1">
+            <span
+              class="font-serif-book font-bold text-[11px] text-amber-100 uppercase tracking-widest leading-none truncate"
+              :class="dragGhostDimensions.width < 60 ? 'rotate-90' : ''"
+            >
+              {{ store.activeDraggingBook.title }}
+            </span>
+          </div>
+
+          <!-- Bottom Dimensions Badge -->
+          <div class="text-[8px] font-mono text-amber-300/80">
+            {{ dragGhostDimensions.width }}px
+          </div>
         </div>
-      </template>
+      </div>
 
       <!-- Continuous Shelf Floor Canvas -->
       <div
         class="relative min-h-[265px] flex items-end z-10 pb-0.5"
         :style="{ width: `${shelfContentWidth}px`, minWidth: '100%' }"
       >
-        <!-- Books Rendered at their Coordinate Positions -->
+        <!-- Books Rendered at their Computed Coordinate Positions -->
         <div
           v-for="item in positionedBooks"
           :key="item.book.id"
-          class="absolute bottom-0 flex items-end transition-transform duration-300"
-          :class="store.activeDraggingBook?.id === item.book.id ? 'opacity-30' : ''"
+          class="absolute bottom-0 flex items-end transition-all duration-300"
+          :class="store.activeDraggingBook?.id === item.book.id ? 'opacity-25 scale-95' : ''"
           :style="{ left: `${item.x}px` }"
           @click.stop
         >
@@ -150,6 +162,19 @@ const dragIndicatorX = ref<number | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
 
+const dragGhostDimensions = computed(() => {
+  if (!store.activeDraggingBook) return { width: 34, height: 220 }
+  const isFlat = store.activeDraggingBook.layerMode === 'horizontal-stack'
+  const spineW = calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
+  const bookH = calculateBookHeight(store.activeDraggingBook.id)
+  const flatLength = Math.min(210, Math.max(170, Math.round(bookH * 0.82)))
+
+  if (isFlat) {
+    return { width: flatLength, height: spineW }
+  }
+  return { width: spineW, height: bookH }
+})
+
 interface PositionedBook {
   book: Book
   x: number
@@ -170,7 +195,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     return (a.slotIndex ?? 0) - (b.slotIndex ?? 0)
   })
 
-  // Calculate base coordinates and dimensions
+  // Calculate base coordinates and dimensions respecting full book footprints
   let currentFlowX = 24
   const calculatedItems: { book: Book; x: number; width: number; isFlat: boolean }[] = []
 
@@ -193,6 +218,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       isFlat: isExplicitFlat,
     })
 
+    // Advance floor flow coordinate with snug 4px separation
     currentFlowX = Math.max(currentFlowX, x + bookWidth + 4)
   }
 
@@ -253,26 +279,23 @@ function handleTrackDragOver(e: DragEvent) {
   e.dataTransfer!.dropEffect = 'move'
   const rect = shelfTrack.value.getBoundingClientRect()
   const scrollLeft = shelfTrack.value.scrollLeft
-  const rawX = Math.max(0, e.clientX - rect.left + scrollLeft - 18)
+  const rawX = Math.max(0, e.clientX - rect.left + scrollLeft - Math.round(dragGhostDimensions.value.width / 2))
   
-  // Dragging book width
-  const draggingWidth = store.activeDraggingBook 
-    ? calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
-    : 34
+  const ghostW = dragGhostDimensions.value.width
 
-  // Magnetic Snapping: when within 18px of an adjacent book, snap cleanly (1px gap)
+  // Magnetic Snapping: when within 18px of an adjacent book, snap cleanly with 2px gap
   let targetX = rawX
   for (const item of positionedBooks.value) {
     if (store.activeDraggingBook && item.book.id === store.activeDraggingBook.id) continue
 
-    // Snap to right edge of item
+    // Snap to right side of item
     if (Math.abs(rawX - (item.x + item.width)) < 18) {
-      targetX = item.x + item.width + 1
+      targetX = item.x + item.width + 2
       break
     }
-    // Snap to left edge of item
-    if (Math.abs(rawX - (item.x - draggingWidth)) < 18) {
-      targetX = Math.max(0, item.x - draggingWidth - 1)
+    // Snap to left side of item
+    if (Math.abs(rawX - (item.x - ghostW)) < 18) {
+      targetX = Math.max(0, item.x - ghostW - 2)
       break
     }
   }

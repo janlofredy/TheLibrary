@@ -65,7 +65,7 @@ export interface NeighborInfo {
  * 2. Automatic leaning for slim books (width <= 45px).
  * 3. Sandwiched between two books -> stands upright.
  * 4. Unsupported on lean side -> falls over & lies flat.
- * 5. Supported on lean side -> leans and hits neighbor with anti-clipping floorLift.
+ * 5. Supported on lean side -> dynamically calculates lean angle bounded by neighbor gap (ZERO CLIPPING).
  */
 export function getBookSizing(
   book: Book,
@@ -102,7 +102,7 @@ export function getBookSizing(
     }
   }
 
-  // 3. Sandwiched Condition: If book has tight neighbors on both left and right (distance <= 8px), it stands upright!
+  // 3. Sandwiched Condition: If book has tight non-flat neighbors on both left and right (distance <= 8px), it stands upright!
   const hasTightLeft = Boolean(neighbors?.left && neighbors.left.distance <= 8 && !neighbors.left.isFlat)
   const hasTightRight = Boolean(neighbors?.right && neighbors.right.distance <= 8 && !neighbors.right.isFlat)
 
@@ -125,13 +125,13 @@ export function getBookSizing(
   } else if (book.layerMode === 'leaning-right') {
     leanDir = 'right'
   } else {
-    // Automatic leaning based on UUID
     leanDir = getNaturalLeanDirection(book.id)
   }
 
   // 5. Evaluate Support on the Lean Side
   if (leanDir === 'right') {
-    const hasRightSupport = Boolean(neighbors?.right && neighbors.right.distance <= 50)
+    const neighbor = neighbors?.right
+    const hasRightSupport = Boolean(neighbor && neighbor.distance <= 50)
     
     if (!hasRightSupport) {
       // Unsupported on the right: falls over and lies flat on the shelf floor!
@@ -146,15 +146,30 @@ export function getBookSizing(
       }
     }
 
-    // Supported on the right: leans right and hits right neighbor
-    const baseAngle = 5.4
-    const rad = baseAngle * (Math.PI / 180)
-    const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
+    // Supported on the right: compute exact tilt angle based on gap to prevent side clipping!
+    const availableGap = neighbor ? neighbor.distance : 18
+    if (availableGap < 2) {
+      // Too tight to lean -> stands upright
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: 0,
+        floorLift: 0,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    const reachX = Math.min(availableGap, 22)
+    const angleRad = Math.asin(Math.min(0.25, reachX / fullBookHeight))
+    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+    const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
     return {
       width: spineThickness,
       height: fullBookHeight,
-      rotationDeg: baseAngle,
+      rotationDeg: angleDeg,
       floorLift,
       canTilt: true,
       isFlat: false,
@@ -162,7 +177,8 @@ export function getBookSizing(
     }
   } else {
     // Leaning Left
-    const hasLeftSupport = Boolean(neighbors?.left && neighbors.left.distance <= 50)
+    const neighbor = neighbors?.left
+    const hasLeftSupport = Boolean(neighbor && neighbor.distance <= 50)
     
     if (!hasLeftSupport) {
       // Unsupported on the left: falls over and lies flat on the shelf floor!
@@ -177,15 +193,30 @@ export function getBookSizing(
       }
     }
 
-    // Supported on the left: leans left and hits left neighbor
-    const baseAngle = 5.4
-    const rad = baseAngle * (Math.PI / 180)
-    const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
+    // Supported on the left: compute exact tilt angle based on gap to prevent side clipping!
+    const availableGap = neighbor ? neighbor.distance : 18
+    if (availableGap < 2) {
+      // Too tight to lean -> stands upright
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: 0,
+        floorLift: 0,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    const reachX = Math.min(availableGap, 22)
+    const angleRad = Math.asin(Math.min(0.25, reachX / fullBookHeight))
+    const angleDeg = Number(((angleRad * 180) / Math.PI).toFixed(1))
+    const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
 
     return {
       width: spineThickness,
       height: fullBookHeight,
-      rotationDeg: -baseAngle,
+      rotationDeg: -angleDeg,
       floorLift,
       canTilt: true,
       isFlat: false,
