@@ -131,7 +131,7 @@
 import { ref, computed } from 'vue'
 import type { Shelf, Book } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
-import { calculateSpineWidth, calculateBookHeight, type NeighborInfo } from '@/utils/bookSizing'
+import { calculateSpineWidth, calculateBookHeight, getBookSizing, type NeighborInfo } from '@/utils/bookSizing'
 import BookSpine from './BookSpine.vue'
 
 const props = defineProps<{
@@ -239,6 +239,25 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     })
   }
 
+  // 2-Pass Cascading Lean Propagation (Right-to-Left for right-leaning stacks, Left-to-Right for left-leaning stacks)
+  const sizings = result.map(p => getBookSizing(p.book, { left: p.leftNeighbor, right: p.rightNeighbor }))
+
+  // Propagate Right-to-Left (books leaning right towards already-tilted neighbors)
+  for (let i = result.length - 2; i >= 0; i--) {
+    if (result[i].rightNeighbor) {
+      result[i].rightNeighbor!.rotationDeg = sizings[i + 1].rotationDeg
+      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor })
+    }
+  }
+
+  // Propagate Left-to-Right (books leaning left towards already-tilted neighbors)
+  for (let i = 1; i < result.length; i++) {
+    if (result[i].leftNeighbor) {
+      result[i].leftNeighbor!.rotationDeg = sizings[i - 1].rotationDeg
+      sizings[i] = getBookSizing(result[i].book, { left: result[i].leftNeighbor, right: result[i].rightNeighbor })
+    }
+  }
+
   return result
 })
 
@@ -254,19 +273,23 @@ const ghostLeftNeighbor = computed<NeighborInfo | null>(() => {
 
   const closest = leftCandidates[leftCandidates.length - 1]
   const distance = Math.max(0, targetX - (closest.x + closest.width))
+  const sizing = getBookSizing(closest.book, { left: closest.leftNeighbor, right: closest.rightNeighbor })
   return {
     book: closest.book,
     distance,
     isFlat: closest.isFlat,
     height: closest.height,
     width: closest.width,
+    rotationDeg: sizing.rotationDeg,
   }
 })
 
 const ghostRightNeighbor = computed<NeighborInfo | null>(() => {
   if (dragIndicatorX.value === null || !store.activeDraggingBook) return null
   const targetX = dragIndicatorX.value
-  const draggingW = calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
+  const draggingW = store.activeDraggingBook.layerMode === 'horizontal-stack'
+    ? calculateBookHeight(store.activeDraggingBook.id)
+    : calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
 
   const rightCandidates = positionedBooks.value.filter(
     p => p.book.id !== store.activeDraggingBook!.id && p.x >= targetX + draggingW
@@ -275,12 +298,14 @@ const ghostRightNeighbor = computed<NeighborInfo | null>(() => {
 
   const closest = rightCandidates[0]
   const distance = Math.max(0, closest.x - (targetX + draggingW))
+  const sizing = getBookSizing(closest.book, { left: closest.leftNeighbor, right: closest.rightNeighbor })
   return {
     book: closest.book,
     distance,
     isFlat: closest.isFlat,
     height: closest.height,
     width: closest.width,
+    rotationDeg: sizing.rotationDeg,
   }
 })
 

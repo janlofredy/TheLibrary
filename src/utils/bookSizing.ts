@@ -59,6 +59,7 @@ export interface NeighborInfo {
   isFlat: boolean
   height: number
   width: number
+  rotationDeg?: number
 }
 
 /**
@@ -88,10 +89,10 @@ export function computePreciseLeanAngle(gap: number, H: number, W: number): numb
 
 /**
  * Computes full sizing according to the formal physics specification:
- * 1. Calculates exact lean angle spanning the gap distance to hit the adjacent book (ZERO CLIPPING for any gap < flatBookLength).
- * 2. If a neighbor is on the lean side at ANY distance < flatBookLength, the book leans against it rather than falling through it.
- * 3. Only lies flat on the floor if there is full clearance (distance >= flatBookLength or no neighbor).
- * 4. Floor lift keeps the bottom vertex tangent to the floor with zero piercing.
+ * 1. Cascading Domino Physics: Leaning towards an already-tilted neighbor spans the tilted neighbor's shifted surface (no floating in mid-air).
+ * 2. Tight neighbor cascades (distance <= 8px) adopt parallel domino tilt for snug contact along their full spine face.
+ * 3. Flat books receive resting contact with zero piercing.
+ * 4. Open spaces (distance >= flatBookLength) safely fall flat on the shelf floor.
  */
 export function getBookSizing(
   book: Book,
@@ -171,8 +172,7 @@ export function getBookSizing(
       }
     }
 
-    // A neighbor is standing or lying within reach (distance < flatBookLength)!
-    // It MUST lean against the neighbor without clipping into it:
+    // Leaning on a flat book to the right
     if (neighbor.isFlat) {
       const flatH = Math.max(28, neighbor.height)
       const gap = Math.max(0, neighbor.distance)
@@ -192,10 +192,49 @@ export function getBookSizing(
       }
     }
 
-    // Standing neighbor on right
+    // Standing or Leaning neighbor on the right
+    const neighborAngle = neighbor.rotationDeg ?? 0
+
+    if (neighborAngle > 0) {
+      // Neighbor is ALSO leaning to the right! (Cascading domino stack)
+      if (neighbor.distance <= 8) {
+        // Snug parallel domino lean resting along neighbor's tilted face
+        const angleDeg = neighborAngle
+        const angleRad = (angleDeg * Math.PI) / 180
+        const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+
+        return {
+          width: spineThickness,
+          height: fullBookHeight,
+          rotationDeg: angleDeg,
+          floorLift,
+          canTilt: true,
+          isFlat: false,
+          topEdgeDetail: false,
+        }
+      }
+
+      // Spanned gap taking neighbor's shifted top into account
+      const neighborTopShift = neighbor.height * Math.sin((neighborAngle * Math.PI) / 180)
+      const totalGap = neighbor.distance + neighborTopShift
+      const angleDeg = computePreciseLeanAngle(totalGap, fullBookHeight, spineThickness)
+      const angleRad = (angleDeg * Math.PI) / 180
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: angleDeg,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
+    // Standing upright neighbor on right
     const gap = neighbor.distance
     if (gap < 2) {
-      // Flush against neighbor -> stands upright
       return {
         width: spineThickness,
         height: fullBookHeight,
@@ -207,7 +246,6 @@ export function getBookSizing(
       }
     }
 
-    // Leans all the way across the gap to hit the standing neighbor with precise trigonometry!
     const angleDeg = computePreciseLeanAngle(gap, fullBookHeight, spineThickness)
     const angleRad = (angleDeg * Math.PI) / 180
     const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
@@ -227,7 +265,6 @@ export function getBookSizing(
     const isAgainstLeftWall = Boolean(book.positionX !== undefined && book.positionX <= 8)
     
     if (isAgainstLeftWall) {
-      // Leaning against the left shelf vertical frame wall
       const baseAngle = 6.5
       const rad = baseAngle * (Math.PI / 180)
       const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
@@ -243,7 +280,6 @@ export function getBookSizing(
       }
     }
     
-    // If no neighbor on the left or the gap is wider than the book's full height -> falls flat cleanly
     if (!neighbor || neighbor.distance >= flatBookLength) {
       return {
         width: flatBookLength,
@@ -256,7 +292,6 @@ export function getBookSizing(
       }
     }
 
-    // A neighbor is standing or lying within reach to the left (distance < flatBookLength)!
     if (neighbor.isFlat) {
       const flatH = Math.max(28, neighbor.height)
       const gap = Math.max(0, neighbor.distance)
@@ -276,10 +311,46 @@ export function getBookSizing(
       }
     }
 
-    // Standing neighbor on left
+    // Standing or Leaning neighbor on the left
+    const neighborAngle = neighbor.rotationDeg ?? 0
+
+    if (neighborAngle < 0) {
+      // Neighbor is ALSO leaning to the left! (Cascading domino stack)
+      if (neighbor.distance <= 8) {
+        const angleDeg = neighborAngle
+        const angleRad = (Math.abs(angleDeg) * Math.PI) / 180
+        const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+
+        return {
+          width: spineThickness,
+          height: fullBookHeight,
+          rotationDeg: angleDeg,
+          floorLift,
+          canTilt: true,
+          isFlat: false,
+          topEdgeDetail: false,
+        }
+      }
+
+      const neighborTopShift = neighbor.height * Math.sin((Math.abs(neighborAngle) * Math.PI) / 180)
+      const totalGap = neighbor.distance + neighborTopShift
+      const angleDeg = computePreciseLeanAngle(totalGap, fullBookHeight, spineThickness)
+      const angleRad = (angleDeg * Math.PI) / 180
+      const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
+
+      return {
+        width: spineThickness,
+        height: fullBookHeight,
+        rotationDeg: -angleDeg,
+        floorLift,
+        canTilt: true,
+        isFlat: false,
+        topEdgeDetail: false,
+      }
+    }
+
     const gap = neighbor.distance
     if (gap < 2) {
-      // Flush against neighbor -> stands upright
       return {
         width: spineThickness,
         height: fullBookHeight,
@@ -291,7 +362,6 @@ export function getBookSizing(
       }
     }
 
-    // Leans all the way across the gap to hit the standing neighbor!
     const angleDeg = computePreciseLeanAngle(gap, fullBookHeight, spineThickness)
     const angleRad = (angleDeg * Math.PI) / 180
     const floorLift = Math.ceil(spineThickness * Math.sin(angleRad)) + 1
