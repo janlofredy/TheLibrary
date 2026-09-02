@@ -1,9 +1,9 @@
 <template>
   <div class="relative w-full mb-8 sm:mb-12 flex flex-col group/shelf">
-    <!-- Shelf Top Ambient Occlusion Cavity (Continuous Wooden Shelf Canvas) -->
+    <!-- Shelf Top Ambient Occlusion Cavity (Bounded Physical Wooden Shelf Track) -->
     <div
       ref="shelfTrack"
-      class="relative min-h-[300px] w-full flex items-end px-4 sm:px-8 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden select-none cursor-crosshair"
+      class="relative min-h-[300px] w-full flex items-end px-4 sm:px-8 pt-8 pb-1.5 overflow-hidden select-none cursor-crosshair"
       @dragover.prevent="handleTrackDragOver"
       @dragleave="handleTrackDragLeave"
       @drop.prevent="handleTrackDrop"
@@ -12,13 +12,12 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
 
-      <!-- Continuous Shelf Floor Canvas (Shares exact 1:1 coordinate space with Ghost & Books) -->
+      <!-- Bounded Shelf Floor Canvas (100% width, no horizontal scroll) -->
       <div
         ref="shelfCanvas"
-        class="relative min-h-[265px] flex items-end z-10 pb-0.5"
-        :style="{ width: `${shelfContentWidth}px`, minWidth: '100%' }"
+        class="relative min-h-[265px] w-full flex items-end z-10 pb-0.5"
       >
-        <!-- Live Ghost Drag Preview Overlay (Positioned in exact same coordinate space) -->
+        <!-- Live Ghost Drag Preview Overlay -->
         <div
           v-if="dragIndicatorX !== null && store.activeDraggingBook"
           class="absolute bottom-0 z-40 pointer-events-none transition-all duration-75 scale-[1.02]"
@@ -50,8 +49,9 @@
           />
         </div>
 
-        <!-- Add Book Button at trailing edge -->
+        <!-- Add Book Button within shelf boundaries -->
         <div
+          v-if="canFitNewBook"
           class="absolute bottom-0 flex items-end"
           :style="{ left: `${trailingButtonX}px` }"
           @click.stop
@@ -143,8 +143,6 @@ const shelfTrack = ref<HTMLElement | null>(null)
 const shelfCanvas = ref<HTMLElement | null>(null)
 const dragIndicatorX = ref<number | null>(null)
 
-const books = computed(() => store.getBooksForShelf(props.shelf.id))
-
 interface PositionedBook {
   book: Book
   x: number
@@ -156,17 +154,15 @@ interface PositionedBook {
 }
 
 const positionedBooks = computed<PositionedBook[]>(() => {
-  if (books.value.length === 0) return []
+  const shelfBooks = store.books.filter(b => b.shelfId === props.shelf.id)
+  if (shelfBooks.length === 0) return []
 
-  // Sort by positionX or slotIndex
-  const sorted = [...books.value].sort((a, b) => {
-    if (a.positionX !== undefined && b.positionX !== undefined) {
-      return a.positionX - b.positionX
-    }
-    return (a.slotIndex ?? 0) - (b.slotIndex ?? 0)
+  const sorted = [...shelfBooks].sort((a, b) => {
+    const aX = a.positionX ?? a.slotIndex ?? 0
+    const bX = b.positionX ?? b.slotIndex ?? 0
+    return aX - bX
   })
 
-  // Calculate base coordinates and dimensions respecting full book footprints starting at the very edge
   let currentFlowX = 0
   const calculatedItems: { book: Book; x: number; width: number; height: number; isFlat: boolean }[] = []
 
@@ -191,7 +187,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       isFlat: isExplicitFlat,
     })
 
-    // Advance floor flow coordinate with snug 6px separation
+    // Advance floor flow coordinate with snug separation
     currentFlowX = Math.max(currentFlowX, x + bookWidth + 6)
   }
 
@@ -315,8 +311,9 @@ const trailingButtonX = computed(() => {
   return maxRight + 16
 })
 
-const shelfContentWidth = computed(() => {
-  return trailingButtonX.value + 120
+const canFitNewBook = computed(() => {
+  const canvasW = shelfCanvas.value?.clientWidth || 900
+  return trailingButtonX.value + 48 <= canvasW
 })
 
 function resolveNonOverlappingPosition(
@@ -325,7 +322,10 @@ function resolveNonOverlappingPosition(
   existingItems: PositionedBook[],
   draggingBookId?: string
 ): number {
-  let x = Math.max(0, proposedX)
+  const canvasW = shelfCanvas.value?.clientWidth || 900
+  const maxAllowedX = Math.max(0, canvasW - draggingW)
+  
+  let x = Math.max(0, Math.min(proposedX, maxAllowedX))
   if (x < 14) {
     x = 0
   }
@@ -356,8 +356,8 @@ function resolveNonOverlappingPosition(
           // Snap flush to left base of item (straightens leaning books upright)
           x = Math.max(0, itemLeft - draggingW)
         } else {
-          // Snap flush to right base of item (straightens leaning books upright)
-          x = itemRight
+          // Snap flush to right base of item (clamped to shelf right edge)
+          x = Math.min(maxAllowedX, itemRight)
         }
       }
     }
@@ -371,7 +371,6 @@ function handleTrackDragOver(e: DragEvent) {
   if (!shelfTrack.value) return
   e.dataTransfer!.dropEffect = 'move'
   
-  // Calculate relative to the actual shelfCanvas container for 1:1 exact alignment
   const canvasRect = shelfCanvas.value 
     ? shelfCanvas.value.getBoundingClientRect() 
     : shelfTrack.value.getBoundingClientRect()
@@ -383,7 +382,7 @@ function handleTrackDragOver(e: DragEvent) {
     : 34
   const rawX = Math.max(0, Math.round(e.clientX - canvasRect.left - draggingW / 2))
 
-  // Prevent overlap by resolving position against all other shelf books
+  // Prevent overlap and clamp within shelf boundaries
   const validX = resolveNonOverlappingPosition(
     rawX,
     draggingW,
