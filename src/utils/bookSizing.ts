@@ -13,6 +13,14 @@ export function hashString(str: string): number {
 }
 
 /**
+ * Deterministic natural lean direction based on the book's UUID.
+ */
+export function getNaturalLeanDirection(bookId: string): 'left' | 'right' {
+  const hash = hashString(bookId || 'default-seed')
+  return (hash % 2 === 0) ? 'left' : 'right'
+}
+
+/**
  * Calculates dynamic book spine thickness (width in pixels) based on page count.
  * Minimum: 28px (readable title)
  * Base: 32px
@@ -25,7 +33,6 @@ export function calculateSpineWidth(pageCount: number): number {
 
   if (pageCount <= 0) return MIN_WIDTH
 
-  // Linear growth up to ~25 pages, then gentle logarithmic curve to realistic max
   if (pageCount <= 25) {
     return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(BASE_WIDTH + pageCount * 1.6)))
   }
@@ -36,23 +43,33 @@ export function calculateSpineWidth(pageCount: number): number {
 
 /**
  * Procedurally computes a deterministic height (195px - 265px) using the book's UUID seed.
- * Ensures consistent visual height on all devices without storing extra database fields.
  */
 export function calculateBookHeight(bookId: string): number {
   const MIN_HEIGHT = 195
   const MAX_HEIGHT = 265
   const hash = hashString(bookId || 'default-book-seed')
-  const factor = (hash % 1000) / 1000 // 0.000 to 0.999
+  const factor = (hash % 1000) / 1000
   
   return Math.round(MIN_HEIGHT + factor * (MAX_HEIGHT - MIN_HEIGHT))
 }
 
+export interface NeighborInfo {
+  book: Book
+  distance: number
+  isFlat: boolean
+}
+
 /**
- * Computes full sizing, realistic contact tilt angle, unsupported fallback to lying flat, and floor anti-clipping lift.
+ * Computes full sizing according to the formal physics specification:
+ * 1. Deterministic UUID lean direction.
+ * 2. Automatic leaning for slim books (width <= 45px).
+ * 3. Sandwiched between two books -> stands upright.
+ * 4. Unsupported on lean side -> falls over & lies flat.
+ * 5. Supported on lean side -> leans and hits neighbor with anti-clipping floorLift.
  */
 export function getBookSizing(
   book: Book,
-  neighbors?: { left?: Book | null; right?: Book | null }
+  neighbors?: { left?: NeighborInfo | null; right?: NeighborInfo | null }
 ): BookSizing {
   const spineThickness = calculateSpineWidth(book.pageCount || 0)
   const fullBookHeight = calculateBookHeight(book.id)
@@ -71,82 +88,108 @@ export function getBookSizing(
     }
   }
 
-  // 2. Leaning Physics: If tilted with NO supporting neighbor on that side, it falls and lies flat!
-  if (book.layerMode === 'leaning-right' && !neighbors?.right) {
+  // 2. Thick Volume Check (Spine width > 45px stands firmly upright)
+  const canTilt = spineThickness <= 45
+  if (!canTilt) {
     return {
-      width: flatBookLength,
-      height: spineThickness,
+      width: spineThickness,
+      height: fullBookHeight,
+      rotationDeg: 0,
+      floorLift: 0,
+      canTilt: false,
+      isFlat: false,
+      topEdgeDetail: spineThickness >= 48,
+    }
+  }
+
+  // 3. Sandwiched Condition: If book has tight neighbors on both left and right (distance <= 8px), it stands upright!
+  const hasTightLeft = Boolean(neighbors?.left && neighbors.left.distance <= 8 && !neighbors.left.isFlat)
+  const hasTightRight = Boolean(neighbors?.right && neighbors.right.distance <= 8 && !neighbors.right.isFlat)
+
+  if (hasTightLeft && hasTightRight) {
+    return {
+      width: spineThickness,
+      height: fullBookHeight,
       rotationDeg: 0,
       floorLift: 0,
       canTilt: true,
-      isFlat: true,
-      topEdgeDetail: true,
+      isFlat: false,
+      topEdgeDetail: false,
     }
   }
 
-  if (book.layerMode === 'leaning-left' && !neighbors?.left) {
+  // 4. Determine Lean Direction (Explicit preference or automatic deterministic UUID direction)
+  let leanDir: 'left' | 'right'
+  if (book.layerMode === 'leaning-left') {
+    leanDir = 'left'
+  } else if (book.layerMode === 'leaning-right') {
+    leanDir = 'right'
+  } else {
+    // Automatic leaning based on UUID
+    leanDir = getNaturalLeanDirection(book.id)
+  }
+
+  // 5. Evaluate Support on the Lean Side
+  if (leanDir === 'right') {
+    const hasRightSupport = Boolean(neighbors?.right && neighbors.right.distance <= 50)
+    
+    if (!hasRightSupport) {
+      // Unsupported on the right: falls over and lies flat on the shelf floor!
+      return {
+        width: flatBookLength,
+        height: spineThickness,
+        rotationDeg: 0,
+        floorLift: 0,
+        canTilt: true,
+        isFlat: true,
+        topEdgeDetail: true,
+      }
+    }
+
+    // Supported on the right: leans right and hits right neighbor
+    const baseAngle = 5.4
+    const rad = baseAngle * (Math.PI / 180)
+    const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
+
     return {
-      width: flatBookLength,
-      height: spineThickness,
-      rotationDeg: 0,
-      floorLift: 0,
+      width: spineThickness,
+      height: fullBookHeight,
+      rotationDeg: baseAngle,
+      floorLift,
       canTilt: true,
-      isFlat: true,
-      topEdgeDetail: true,
+      isFlat: false,
+      topEdgeDetail: false,
     }
-  }
-
-  // 3. Standing or Supported Leaning Mode
-  const width = spineThickness
-  const height = fullBookHeight
-
-  // Only slim/medium books (<= 48px width) can physically lean against a neighbor
-  const canTilt = width <= 48
-
-  let rotationDeg = 0
-  let floorLift = 0
-
-  if (canTilt && (book.layerMode === 'leaning-left' || book.layerMode === 'leaning-right')) {
-    const seed = hashString(book.id + '-lean')
-    // Distinct physical lean angle (5.0deg - 5.8deg) so the upper corner reaches over and hits the adjacent neighbor
-    let baseAngle = 5.0 + ((seed % 9) / 10)
-
-    if (book.layerMode === 'leaning-right') {
-      const right = neighbors?.right
-      if (right && right.layerMode === 'standing') {
-        baseAngle = 5.4 // Hits upright standing neighbor firmly
-      } else if (right && right.layerMode === 'leaning-right') {
-        baseAngle = 5.2 // Parallel domino cascade
-      } else if (right && right.layerMode === 'leaning-left') {
-        baseAngle = 4.2 // Apex tent touch
+  } else {
+    // Leaning Left
+    const hasLeftSupport = Boolean(neighbors?.left && neighbors.left.distance <= 50)
+    
+    if (!hasLeftSupport) {
+      // Unsupported on the left: falls over and lies flat on the shelf floor!
+      return {
+        width: flatBookLength,
+        height: spineThickness,
+        rotationDeg: 0,
+        floorLift: 0,
+        canTilt: true,
+        isFlat: true,
+        topEdgeDetail: true,
       }
-      rotationDeg = baseAngle
-    } else if (book.layerMode === 'leaning-left') {
-      const left = neighbors?.left
-      if (left && left.layerMode === 'standing') {
-        baseAngle = 5.4 // Hits upright standing neighbor firmly
-      } else if (left && left.layerMode === 'leaning-left') {
-        baseAngle = 5.2 // Parallel domino cascade
-      } else if (left && left.layerMode === 'leaning-right') {
-        baseAngle = 4.2 // Apex tent touch
-      }
-      rotationDeg = -baseAngle
     }
 
-    // Floor anti-clipping upward compensation
-    const rad = Math.abs(rotationDeg) * (Math.PI / 180)
-    floorLift = Math.ceil(width * Math.sin(rad)) + 1
-  }
+    // Supported on the left: leans left and hits left neighbor
+    const baseAngle = 5.4
+    const rad = baseAngle * (Math.PI / 180)
+    const floorLift = Math.ceil(spineThickness * Math.sin(rad)) + 1
 
-  const topEdgeDetail = width >= 48
-
-  return {
-    width,
-    height,
-    rotationDeg,
-    floorLift,
-    canTilt,
-    isFlat: false,
-    topEdgeDetail,
+    return {
+      width: spineThickness,
+      height: fullBookHeight,
+      rotationDeg: -baseAngle,
+      floorLift,
+      canTilt: true,
+      isFlat: false,
+      topEdgeDetail: false,
+    }
   }
 }

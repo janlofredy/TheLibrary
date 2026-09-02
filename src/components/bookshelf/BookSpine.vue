@@ -136,12 +136,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Book } from '@/types/journal'
-import { getBookSizing } from '@/utils/bookSizing'
+import { getBookSizing, type NeighborInfo } from '@/utils/bookSizing'
 
 const props = defineProps<{
   book: Book
-  leftNeighbor?: Book | null
-  rightNeighbor?: Book | null
+  leftNeighbor?: NeighborInfo | null
+  rightNeighbor?: NeighborInfo | null
 }>()
 
 const emit = defineEmits<{
@@ -152,7 +152,7 @@ const emit = defineEmits<{
 const sizing = computed(() => getBookSizing(props.book, { left: props.leftNeighbor, right: props.rightNeighbor }))
 
 const containerWrapperStyle = computed(() => {
-  const { width, height, rotationDeg, floorLift, canTilt, isFlat } = sizing.value
+  const { width, height, rotationDeg, floorLift, isFlat } = sizing.value
   
   if (isFlat) {
     return {
@@ -167,18 +167,10 @@ const containerWrapperStyle = computed(() => {
   let transformOrigin = 'bottom center'
   let zIndex = 10
 
-  if (canTilt && (props.book.layerMode === 'leaning-left' || props.book.layerMode === 'leaning-right')) {
-    if (props.book.layerMode === 'leaning-left') {
-      // Base touches right neighbor, top tilts left to touch left neighbor
-      transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
-      transformOrigin = 'bottom right'
-      zIndex = 20
-    } else {
-      // Base touches left neighbor, top tilts right to touch right neighbor
-      transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
-      transformOrigin = 'bottom left'
-      zIndex = 20
-    }
+  if (rotationDeg !== 0) {
+    transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
+    transformOrigin = rotationDeg > 0 ? 'bottom left' : 'bottom right'
+    zIndex = 20
   }
 
   return {

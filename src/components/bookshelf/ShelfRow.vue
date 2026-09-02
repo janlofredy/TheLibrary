@@ -1,6 +1,6 @@
 <template>
   <div class="relative w-full mb-8 sm:mb-12 flex flex-col group/shelf">
-    <!-- Shelf Top Ambient Occlusion Cavity (Infinite Free Placement Wooden Canvas) -->
+    <!-- Shelf Top Ambient Occlusion Cavity (Continuous Wooden Shelf Canvas) -->
     <div
       ref="shelfTrack"
       class="relative min-h-[300px] w-full flex items-end px-6 sm:px-12 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden select-none cursor-crosshair"
@@ -12,19 +12,34 @@
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
 
-      <!-- Dragging Drop Indicator Marker -->
-      <div
-        v-if="dragIndicatorX !== null"
-        class="absolute bottom-1 w-1 bg-amber-400 rounded-full shadow-[0_0_12px_rgba(251,191,36,0.9)] z-40 pointer-events-none transition-all duration-75"
-        :style="{ left: `${dragIndicatorX}px`, height: '220px' }"
-      ></div>
+      <!-- Live Ghost Drag Preview Marker & Ghost Book -->
+      <template v-if="dragIndicatorX !== null">
+        <!-- Vertical Glowing Drop Bar -->
+        <div
+          class="absolute bottom-1 w-1 bg-amber-400 rounded-full shadow-[0_0_12px_rgba(251,191,36,0.9)] z-40 pointer-events-none transition-all duration-75"
+          :style="{ left: `${dragIndicatorX}px`, height: '220px' }"
+        ></div>
 
-      <!-- Continuous Shelf Floor Canvas (Dynamic infinite width based on book positions) -->
+        <!-- Ghost Book Outline Preview -->
+        <div
+          v-if="ghostPreviewBook"
+          class="absolute bottom-0 opacity-60 border-2 border-dashed border-amber-300 rounded pointer-events-none z-30 transition-all duration-75 shadow-2xl scale-[1.02]"
+          :style="{ left: `${dragIndicatorX}px`, width: '38px', height: '225px', backgroundColor: ghostPreviewBook.spineColor }"
+        >
+          <div class="h-full w-full flex items-center justify-center p-1 overflow-hidden">
+            <span class="text-[10px] uppercase font-bold tracking-widest text-amber-100 rotate-90 whitespace-nowrap">
+              {{ ghostPreviewBook.title }}
+            </span>
+          </div>
+        </div>
+      </template>
+
+      <!-- Continuous Shelf Floor Canvas -->
       <div
         class="relative min-h-[265px] flex items-end z-10 pb-0.5"
         :style="{ width: `${shelfContentWidth}px`, minWidth: '100%' }"
       >
-        <!-- Books Rendered at their Free Coordinate Positions -->
+        <!-- Books Rendered at their Coordinate Positions -->
         <div
           v-for="item in positionedBooks"
           :key="item.book.id"
@@ -122,7 +137,7 @@
 import { ref, computed } from 'vue'
 import type { Shelf, Book } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
-import { calculateSpineWidth } from '@/utils/bookSizing'
+import { calculateSpineWidth, calculateBookHeight, type NeighborInfo } from '@/utils/bookSizing'
 import BookSpine from './BookSpine.vue'
 
 const props = defineProps<{
@@ -132,15 +147,22 @@ const props = defineProps<{
 const store = useLibraryStore()
 const shelfTrack = ref<HTMLElement | null>(null)
 const dragIndicatorX = ref<number | null>(null)
+const draggingBookId = ref<string | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
+
+const ghostPreviewBook = computed(() => {
+  if (!draggingBookId.value) return null
+  return store.books.find(b => b.id === draggingBookId.value) || null
+})
 
 interface PositionedBook {
   book: Book
   x: number
   width: number
-  leftNeighbor: Book | null
-  rightNeighbor: Book | null
+  isFlat: boolean
+  leftNeighbor: NeighborInfo | null
+  rightNeighbor: NeighborInfo | null
 }
 
 const positionedBooks = computed<PositionedBook[]>(() => {
@@ -154,14 +176,16 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     return (a.slotIndex ?? 0) - (b.slotIndex ?? 0)
   })
 
-  // Calculate coordinates
+  // Calculate base coordinates and dimensions
   let currentFlowX = 24
-  const calculatedItems: { book: Book; x: number; width: number }[] = []
+  const calculatedItems: { book: Book; x: number; width: number; isFlat: boolean }[] = []
 
   for (const book of sorted) {
-    const isFlat = book.layerMode === 'horizontal-stack'
+    const isExplicitFlat = book.layerMode === 'horizontal-stack'
     const spineW = calculateSpineWidth(book.pageCount || 0)
-    const bookWidth = isFlat ? 190 : spineW
+    const bookH = calculateBookHeight(book.id)
+    const flatLength = Math.min(210, Math.max(170, Math.round(bookH * 0.82)))
+    const bookWidth = isExplicitFlat ? flatLength : spineW
 
     let x = book.positionX
     if (x === undefined || x < 0) {
@@ -172,33 +196,38 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       book,
       x,
       width: bookWidth,
+      isFlat: isExplicitFlat,
     })
 
     currentFlowX = Math.max(currentFlowX, x + bookWidth + 4)
   }
 
-  // Determine neighbors based on physical proximity (within 55px contact range)
+  // Determine physical neighbor contact information
   const result: PositionedBook[] = []
   for (let i = 0; i < calculatedItems.length; i++) {
     const current = calculatedItems[i]
-    let leftNeighbor: Book | null = null
-    let rightNeighbor: Book | null = null
+    let leftNeighbor: NeighborInfo | null = null
+    let rightNeighbor: NeighborInfo | null = null
 
     // Check left neighbor
     if (i > 0) {
       const prev = calculatedItems[i - 1]
-      const distance = current.x - (prev.x + prev.width)
-      if (distance <= 55) {
-        leftNeighbor = prev.book
+      const distance = Math.max(0, current.x - (prev.x + prev.width))
+      leftNeighbor = {
+        book: prev.book,
+        distance,
+        isFlat: prev.isFlat,
       }
     }
 
     // Check right neighbor
     if (i < calculatedItems.length - 1) {
       const next = calculatedItems[i + 1]
-      const distance = next.x - (current.x + current.width)
-      if (distance <= 55) {
-        rightNeighbor = next.book
+      const distance = Math.max(0, next.x - (current.x + current.width))
+      rightNeighbor = {
+        book: next.book,
+        distance,
+        isFlat: next.isFlat,
       }
     }
 
@@ -206,6 +235,7 @@ const positionedBooks = computed<PositionedBook[]>(() => {
       book: current.book,
       x: current.x,
       width: current.width,
+      isFlat: current.isFlat,
       leftNeighbor,
       rightNeighbor,
     })
@@ -229,7 +259,22 @@ function handleTrackDragOver(e: DragEvent) {
   e.dataTransfer!.dropEffect = 'move'
   const rect = shelfTrack.value.getBoundingClientRect()
   const scrollLeft = shelfTrack.value.scrollLeft
-  dragIndicatorX.value = Math.max(0, e.clientX - rect.left + scrollLeft)
+  const rawX = Math.max(0, e.clientX - rect.left + scrollLeft - 18)
+  
+  // Magnetic Snapping: if within 14px of another book's edge, snap snugly (gap = 1px)
+  let targetX = rawX
+  for (const item of positionedBooks.value) {
+    if (Math.abs(rawX - (item.x + item.width)) < 14) {
+      targetX = item.x + item.width + 1 // Snug snap after item
+      break
+    }
+    if (Math.abs(rawX - (item.x - 38)) < 14) {
+      targetX = Math.max(0, item.x - 39) // Snug snap before item
+      break
+    }
+  }
+
+  dragIndicatorX.value = targetX
 }
 
 function handleTrackDragLeave() {
@@ -237,15 +282,14 @@ function handleTrackDragLeave() {
 }
 
 async function handleTrackDrop(e: DragEvent) {
+  const targetX = dragIndicatorX.value
   dragIndicatorX.value = null
+  draggingBookId.value = null
   if (!shelfTrack.value || !e.dataTransfer) return
 
   const bookId = e.dataTransfer.getData('text/plain')
-  if (bookId) {
-    const rect = shelfTrack.value.getBoundingClientRect()
-    const scrollLeft = shelfTrack.value.scrollLeft
-    const dropX = Math.max(0, Math.round(e.clientX - rect.left + scrollLeft - 18))
-    await store.moveBookToPosition(bookId, props.shelf.id, dropX)
+  if (bookId && targetX !== null) {
+    await store.moveBookToPosition(bookId, props.shelf.id, targetX)
   }
 }
 
