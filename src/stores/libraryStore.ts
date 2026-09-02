@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { db, seedInitialData } from '@/db'
-import type { Library, Shelf, Book, Page, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode, PaperStyle, Mood } from '@/types/journal'
+import type { Library, Shelf, Book, Page, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode, PaperStyle } from '@/types/journal'
 
 export const useLibraryStore = defineStore('library', () => {
   const isLoading = ref(true)

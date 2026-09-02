@@ -1,12 +1,12 @@
 <template>
-  <div class="relative w-full mb-10 flex flex-col group/shelf">
-    <!-- Shelf Top Ambient Occlusion Cavity -->
-    <div class="relative min-h-[290px] w-full flex items-end px-6 sm:px-12 pb-1 overflow-x-auto overflow-y-visible">
+  <div class="relative w-full mb-8 sm:mb-12 flex flex-col group/shelf">
+    <!-- Shelf Top Ambient Occlusion Cavity (Clean Horizontal-Only Scrolling, Zero Vertical Scroll) -->
+    <div class="relative min-h-[300px] w-full flex items-end px-6 sm:px-12 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden">
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
       
       <!-- Books Container (Bottom-Aligned Floor) -->
-      <div class="flex items-end gap-1.5 sm:gap-2.5 z-10 min-w-full pb-0.5">
+      <div class="flex items-end gap-1.5 sm:gap-2 z-10 min-w-full pb-0.5">
         <BookSpine
           v-for="book in books"
           :key="book.id"
@@ -27,7 +27,7 @@
       </div>
 
       <!-- Floor Depth Shadow -->
-      <div class="absolute bottom-0 inset-x-0 h-10 shelf-base-shadow pointer-events-none z-20"></div>
+      <div class="absolute bottom-0 inset-x-0 h-6 shelf-base-shadow pointer-events-none z-10"></div>
     </div>
 
     <!-- Solid Wooden Shelf Plank (The Physical Shelf) -->

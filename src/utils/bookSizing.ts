@@ -48,28 +48,33 @@ export function calculateBookHeight(bookId: string): number {
 }
 
 /**
- * Computes full sizing, rotational lean, and anti-clipping spatial offset metrics for a book spine.
+ * Computes full sizing, rotational lean, floor anti-clipping lift, and tilt eligibility for a book.
  */
 export function getBookSizing(book: Book): BookSizing {
   const width = calculateSpineWidth(book.pageCount || 0)
   const height = calculateBookHeight(book.id)
 
-  let rotationDeg = 0
-  let leanOffset = 0
+  // Only slim/medium books (<= 48px width) can physically tilt on the shelf
+  const canTilt = width <= 48
 
-  if (book.layerMode === 'leaning-left') {
-    // Subtle realistic angle between -4.5deg and -6.5deg
+  let rotationDeg = 0
+  let floorLift = 0
+
+  if (canTilt && (book.layerMode === 'leaning-left' || book.layerMode === 'leaning-right')) {
     const seed = hashString(book.id + '-lean')
-    rotationDeg = -4.5 - ((seed % 20) / 10)
-    // Lateral displacement = sin(|theta|) * height
+    const baseAngle = 4.8 + ((seed % 15) / 10) // 4.8deg - 6.2deg natural lean
+
+    if (book.layerMode === 'leaning-left') {
+      rotationDeg = -baseAngle
+    } else {
+      rotationDeg = baseAngle
+    }
+
+    // Floor anti-clipping compensation:
+    // When rotated by theta, the bottom corner dips downward by width * sin(|theta|).
+    // Raising the element upward by floorLift keeps the lowest corner flush on the shelf floor!
     const rad = Math.abs(rotationDeg) * (Math.PI / 180)
-    leanOffset = Math.ceil(Math.sin(rad) * height)
-  } else if (book.layerMode === 'leaning-right') {
-    // Subtle realistic angle between 4.5deg and 6.5deg
-    const seed = hashString(book.id + '-lean')
-    rotationDeg = 4.5 + ((seed % 20) / 10)
-    const rad = Math.abs(rotationDeg) * (Math.PI / 180)
-    leanOffset = Math.ceil(Math.sin(rad) * height)
+    floorLift = Math.ceil(width * Math.sin(rad)) + 1
   }
 
   const topEdgeDetail = width >= 48
@@ -78,7 +83,8 @@ export function getBookSizing(book: Book): BookSizing {
     width,
     height,
     rotationDeg,
-    leanOffset,
+    floorLift,
+    canTilt,
     topEdgeDetail,
   }
 }

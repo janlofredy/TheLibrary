@@ -5,7 +5,7 @@
     @click="handleClick"
     @contextmenu.prevent="handleRightClick"
   >
-    <!-- 3D Book Spine Body (Transforms inside its dedicated slot) -->
+    <!-- 3D Book Spine Body -->
     <div
       class="relative h-full w-full rounded-t-sm flex flex-col justify-between items-center py-3 px-1 overflow-hidden spine-3d-lighting transition-all duration-300 ease-out group-hover:-translate-y-2 group-hover:scale-[1.02]"
       :class="[finishClass, `font-${book.titleFont}-book`]"
@@ -69,15 +69,15 @@
       </div>
     </div>
 
-    <!-- Hanging Bookmark Ribbon -->
+    <!-- Hanging Bookmark Ribbon Tail (Clipped safely above shelf floor) -->
     <div
       v-if="book.hasRibbon"
-      class="absolute left-1/2 -bottom-3.5 -translate-x-1/2 w-2.5 h-4 ribbon-tail shadow-md z-30 transition-transform duration-300 group-hover:translate-y-1"
+      class="absolute left-1/2 -bottom-2 -translate-x-1/2 w-2.5 h-3 ribbon-tail shadow-md z-30 transition-transform duration-300 group-hover:translate-y-0.5"
       :style="{ backgroundColor: book.ribbonColor || '#d4af37' }"
     ></div>
 
     <!-- Book Base Shadow on Shelf Floor -->
-    <div class="absolute -bottom-1 inset-x-1 h-2 bg-black/60 rounded-full blur-[2px] -z-10"></div>
+    <div class="absolute -bottom-0.5 inset-x-1 h-1.5 bg-black/70 rounded-full blur-[1.5px] -z-10"></div>
   </div>
 </template>
 
@@ -98,35 +98,29 @@ const emit = defineEmits<{
 const sizing = computed(() => getBookSizing(props.book))
 
 const containerWrapperStyle = computed(() => {
-  const { width, height, rotationDeg, leanOffset } = sizing.value
+  const { width, height, rotationDeg, floorLift, canTilt } = sizing.value
   
-  let marginLeft = '0px'
-  let marginRight = '0px'
   let transform = ''
   let transformOrigin = 'bottom center'
   let zIndex = 10
 
-  if (props.book.layerMode === 'leaning-left') {
-    // Lean left: top swings left, base pivots on bottom right
-    marginLeft = `${Math.max(4, leanOffset - 2)}px`
-    marginRight = '2px'
-    transform = `rotate(${rotationDeg}deg) translateY(2px)`
-    transformOrigin = 'bottom right'
-    zIndex = 15
-  } else if (props.book.layerMode === 'leaning-right') {
-    // Lean right: top swings right, base pivots on bottom left
-    marginRight = `${Math.max(4, leanOffset - 2)}px`
-    marginLeft = '2px'
-    transform = `rotate(${rotationDeg}deg) translateY(2px)`
-    transformOrigin = 'bottom left'
-    zIndex = 15
+  if (canTilt && (props.book.layerMode === 'leaning-left' || props.book.layerMode === 'leaning-right')) {
+    if (props.book.layerMode === 'leaning-left') {
+      // Pivot around bottom right, lift by floorLift so the dipping corner doesn't pierce the floor
+      transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
+      transformOrigin = 'bottom right'
+      zIndex = 20
+    } else {
+      // Pivot around bottom left, lift by floorLift
+      transform = `translateY(-${floorLift}px) rotate(${rotationDeg}deg)`
+      transformOrigin = 'bottom left'
+      zIndex = 20
+    }
   }
 
   return {
     width: `${width}px`,
     height: `${height}px`,
-    marginLeft,
-    marginRight,
     transform,
     transformOrigin,
     zIndex,

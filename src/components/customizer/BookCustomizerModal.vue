@@ -158,12 +158,17 @@
 
             <!-- Layer Mode & Orientation -->
             <div>
-              <label class="block text-xs font-mono uppercase text-stone-400 mb-1">Shelf Orientation / Layer</label>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-mono uppercase text-stone-400">Shelf Orientation / Layer</label>
+                <span v-if="!previewSizing.canTilt" class="text-[10px] text-amber-400 font-mono">
+                  (Thick volume: Stands upright)
+                </span>
+              </div>
               <div class="flex gap-2">
                 <button
                   type="button"
                   class="flex-1 py-1.5 text-xs rounded border transition cursor-pointer"
-                  :class="form.layerMode === 'standing' ? 'border-amber-400 bg-amber-950/40 text-amber-200' : 'border-stone-800 bg-black/30 text-stone-400'"
+                  :class="form.layerMode === 'standing' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400'"
                   @click="form.layerMode = 'standing'"
                 >
                   Upright
@@ -171,16 +176,24 @@
                 <button
                   type="button"
                   class="flex-1 py-1.5 text-xs rounded border transition cursor-pointer"
-                  :class="form.layerMode === 'leaning-left' ? 'border-amber-400 bg-amber-950/40 text-amber-200' : 'border-stone-800 bg-black/30 text-stone-400'"
-                  @click="form.layerMode = 'leaning-left'"
+                  :disabled="!previewSizing.canTilt"
+                  :class="[
+                    !previewSizing.canTilt ? 'opacity-30 cursor-not-allowed border-stone-800 text-stone-600' :
+                    form.layerMode === 'leaning-left' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400 hover:border-stone-600'
+                  ]"
+                  @click="previewSizing.canTilt && (form.layerMode = 'leaning-left')"
                 >
                   Lean Left
                 </button>
                 <button
                   type="button"
                   class="flex-1 py-1.5 text-xs rounded border transition cursor-pointer"
-                  :class="form.layerMode === 'leaning-right' ? 'border-amber-400 bg-amber-950/40 text-amber-200' : 'border-stone-800 bg-black/30 text-stone-400'"
-                  @click="form.layerMode = 'leaning-right'"
+                  :disabled="!previewSizing.canTilt"
+                  :class="[
+                    !previewSizing.canTilt ? 'opacity-30 cursor-not-allowed border-stone-800 text-stone-600' :
+                    form.layerMode === 'leaning-right' ? 'border-amber-400 bg-amber-950/40 text-amber-200 font-bold' : 'border-stone-800 bg-black/30 text-stone-400 hover:border-stone-600'
+                  ]"
+                  @click="previewSizing.canTilt && (form.layerMode = 'leaning-right')"
                 >
                   Lean Right
                 </button>
