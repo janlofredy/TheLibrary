@@ -265,13 +265,24 @@ const positionedBooks = computed<PositionedBook[]>(() => {
     }
   }
 
-  // Ensure flat books stay completely inside the shelf bounds [0, canvasW]
+  // Position flat books in the direction they fell to avoid cutting through adjacent standing books
   for (let i = 0; i < result.length; i++) {
     const s = sizings[i]
-    if (s.isFlat) {
+    if (s.isFlat && result[i].book.layerMode !== 'horizontal-stack') {
       const flatW = s.width
-      if (result[i].x + flatW > canvasW) {
-        result[i].x = Math.max(0, canvasW - flatW)
+      const spineW = calculateSpineWidth(result[i].book.pageCount || 0)
+      
+      // If book fell left (e.g. has neighbor on right or leaning left)
+      const fellLeft = Boolean(result[i].rightNeighbor && !result[i].leftNeighbor)
+      if (fellLeft) {
+        // Flat book extends leftward from the base of the right neighbor
+        const baseRight = result[i].x + spineW
+        result[i].x = Math.max(0, baseRight - flatW)
+      } else {
+        // Flat book extends rightward from its base, clamped to shelf canvas
+        if (result[i].x + flatW > canvasW) {
+          result[i].x = Math.max(0, canvasW - flatW)
+        }
       }
     }
   }
