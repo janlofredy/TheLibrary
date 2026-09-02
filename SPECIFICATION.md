@@ -180,6 +180,71 @@ my-journal-library/
 - **Debounced Smart Commits**: Changes are grouped and committed to GitHub via the GitHub Git Trees API (`POST /repos/{owner}/{repo}/git/trees`) every 15–30 seconds after editing ceases, preventing rate limit congestion.
 - **Meaningful Git History**: Every commit acts as a time-machine log (e.g., `"Updated Page 4 in '2026 Journal' [word count: 480]"`).
 
+### 4.3 Progressive Web App (PWA) & Offline Engine
+The application is built with a first-class **PWA (Progressive Web App)** architecture via `vite-plugin-pwa` and Workbox:
+
+1. **Native App Installation**:
+   - Installable as a standalone app on iOS (Safari Add to Home Screen), Android (Chrome Install), macOS, Windows, and Linux.
+   - Customized Web App Manifest (`display: standalone`, theme color `#1A130E` / `#F8F5E9`, high-res tactile book icons).
+2. **Offline-First Caching Strategy**:
+   - **App Shell & Assets (Cache-First)**: Core JS, CSS, wood textures, paper grain, and fonts are cached on first load for instant **<100ms offline startup**.
+   - **Data Layer (IndexedDB)**: 100% of reading and writing happens directly against the local IndexedDB database, ensuring zero input latency and complete functionality in airplane mode or off-grid.
+3. **Background Sync API**:
+   - Uses the browser's `SyncManager` (and fallback window focus/online listeners) to automatically flush queued edits to GitHub the moment network connectivity is re-established.
+
+---
+
+### 4.4 Multi-Device Sync & Conflict Resolution Engine
+
+When a user edits their journal across multiple devices (e.g. iPhone on the train offline, MacBook at home), the synchronization engine handles concurrent changes through a multi-tier safety architecture with a **strict Zero Data Loss guarantee**:
+
+```
+                                 [Device A (iPhone)]          [Device B (MacBook)]
+                                 Offline edits Page 1         Offline edits Page 1
+                                           │                            │
+                                           ▼ (Network restored)         ▼ (Network restored)
+                                  ┌──────────────────────────────────────────────┐
+                                  │           SYNC & CONFLICT DETECTOR           │
+                                  │ - Compares baseCommitSha & deviceVectors     │
+                                  └──────────────────────┬───────────────────────┘
+                                                         │
+                        ┌────────────────────────────────┴────────────────────────────────┐
+                        ▼                                                                 ▼
+             [Case 1: Different Pages/Books]                                   [Case 2: Exact Same Page]
+             - Clean 3-way Git merge                                           - Structural AST 3-way auto-merge
+             - 0 conflicts, instant sync                                       - If text overlaps: Auto-preserve
+                                                                                 competing version as Snapshot
+                                                                                 + Visual "Compare & Merge" UI
+```
+
+#### Layer 1: Granular File Isolation (Collision Prevention)
+- Because every Page is stored in its own individual file (`page_001.json`, `page_002.json`) and Books/Shelves have isolated metadata:
+  - If Device A writes on *Page 1* and Device B writes on *Page 2*: **Zero conflict**. Both files commit cleanly.
+  - If Device A adds a *new Book* and Device B edits an *existing Book*: **Zero conflict**.
+
+#### Layer 2: Same-Page Concurrent Edit Detection
+Every page payload tracks:
+- `baseCommitSha`: The exact Git commit SHA from which the local edit branched.
+- `deviceOrigin`: Unique device signature (e.g. `iphone-safari-8f`, `mac-chrome-2b`).
+- `clientTimestamp`: Monotonic timestamp of the edit.
+
+When Device B attempts to push a page whose remote `baseCommitSha` has already been updated by Device A, a **conflict event** is triggered.
+
+#### Layer 3: Conflict Resolution Strategies
+1. **Structural AST 3-Way Auto-Merge**:
+   - Tiptap / ProseMirror document nodes are analyzed. If Device A edited the *Title* and Device B added a *Paragraph at the bottom*, both changes are automatically merged without prompting the user.
+2. **Automatic Conflict Snapshot (Zero Data Loss)**:
+   - If both devices modified the *exact same sentence/paragraph*, the app never silently overwrites either version.
+   - The newer edit is applied to the active page, while the alternate version is preserved in a designated **Conflict Snapshot** (`page_001_conflict_macbook.json`) attached to that page's history.
+3. **Visual "Compare & Merge" UI**:
+   - A subtle antique ribbon notification appears on the open book: *"Concurrent changes detected from another device (iPhone at 2:15 PM). [Compare & Merge]"*.
+   - Clicking opens a side-by-side split desk view showing both versions, with 1-click buttons:
+     - `Keep This Device`
+     - `Keep Other Device`
+     - `Combine Both (Append)`
+4. **Git Version History Safety Net**:
+   - Because all changes are committed to the user's GitHub repository, the entire history of every edit is permanently preserved in Git commit trees. Any previous state can be inspected or rolled back with 1 click.
+
 ---
 
 ## 5. Granular Sharing & Collaboration Model

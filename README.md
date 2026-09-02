@@ -16,7 +16,9 @@
 - **✍️ Tactile Writing Desk**: 3D book-pull animation onto a distraction-free writing desk with paper textures (lined, dotted, parchment) and a rich-text / markdown editor.
 - **⚡ Ultra-Lightweight (Vue Vapor Mode)**: Zero Virtual DOM overhead, <15 KB runtime footprint, silky-smooth 60 FPS GPU-accelerated 3D transforms.
 - **🐙 GitHub as Database & Multi-Provider Auth**: Zero external backend servers needed. Saves directly to your private GitHub repositories with automated version control, with support for linking **Google Login** for 1-click access across devices.
-- **🚀 100% Static & Offline-First**: Instant local writing via IndexedDB (Dexie.js) and 1-click deployment to **GitHub Pages**.
+- **📱 First-Class PWA & Offline Engine**: Installable standalone app on iOS, Android, and Desktop with instant <100ms startup and Background Sync.
+- **🔄 Multi-Device Sync & Conflict Engine**: Granular file isolation, AST 3-way auto-merging, and visual "Compare & Merge" UI with a strict **Zero Data Loss** guarantee.
+- **🚀 100% Static & Deployable to GitHub Pages**: Local-first storage via IndexedDB with automated GitHub Actions CI/CD.
 - **🔗 Granular Sharing**: Share at the Library, Shelf, or Book level.
 
 ---
