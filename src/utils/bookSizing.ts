@@ -67,7 +67,7 @@ export interface NeighborInfo {
  * 1. Explicit Flat Mode: width = H, height = W, isFlat = true.
  * 2. Thick Volume Stability: Spine width > 45px always stands upright (0 deg).
  * 3. Packed Books (gap <= 12px on both sides): stands firmly upright without lean (0 deg).
- * 4. Thin Books Rule: All thin books (W <= 45px) with free space on either side ALWAYS lean.
+ * 4. End-of-Stack Leaning: A book at the end of a packed stack must lean OUTWARD into the open space.
  * 5. Shelf Wall Leaning:
  *    - Flush against left wall (X <= 8px): leans right (+5.5 deg) into open space.
  *    - Flush against right wall (dist <= 8px): leans left (-5.5 deg) into open space.
@@ -166,12 +166,18 @@ export function getBookSizing(
   const hasLeftSupport = isGapLeftWall || Boolean(neighbors?.left && neighbors.left.distance < H)
   const hasRightSupport = isGapRightWall || Boolean(neighbors?.right && neighbors.right.distance < H)
 
-  // 4. Context-Aware Lean Direction
+  // 4. Physical Lean Direction Determination:
   let leanDir: 'left' | 'right'
   if (book.layerMode === 'leaning-left') {
     leanDir = 'left'
   } else if (book.layerMode === 'leaning-right') {
     leanDir = 'right'
+  } else if (hasTightLeft && !hasTightRight) {
+    // Back supported by left stack -> must lean RIGHT into the open space
+    leanDir = 'right'
+  } else if (hasTightRight && !hasTightLeft) {
+    // Back supported by right stack -> must lean LEFT into the open space
+    leanDir = 'left'
   } else if (hasLeftSupport && !hasRightSupport) {
     leanDir = 'left'
   } else if (hasRightSupport && !hasLeftSupport) {
