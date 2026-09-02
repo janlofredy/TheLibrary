@@ -14,10 +14,16 @@
 
     <!-- Main App Content -->
     <template v-else>
-      <Navbar />
-      <main class="flex-1 w-full">
-        <BookshelfView />
-      </main>
+      <!-- Writing Desk Mode (When a Book is open) -->
+      <WritingDesk v-if="store.activeOpenedBookId" />
+
+      <!-- Bookshelf Browsing Mode -->
+      <template v-else>
+        <Navbar />
+        <main class="flex-1 w-full">
+          <BookshelfView />
+        </main>
+      </template>
 
       <!-- Modals -->
       <BookCustomizerModal />
@@ -32,6 +38,7 @@ import { onMounted } from 'vue'
 import { useLibraryStore } from '@/stores/libraryStore'
 import Navbar from '@/components/common/Navbar.vue'
 import BookshelfView from '@/components/bookshelf/BookshelfView.vue'
+import WritingDesk from '@/components/desk/WritingDesk.vue'
 import BookCustomizerModal from '@/components/customizer/BookCustomizerModal.vue'
 import ShelfModal from '@/components/customizer/ShelfModal.vue'
 import LibraryModal from '@/components/customizer/LibraryModal.vue'

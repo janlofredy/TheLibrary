@@ -93,7 +93,7 @@ const store = useLibraryStore()
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
 
 function handleSelectBook(book: Book) {
-  store.openBookCustomizer(book)
+  store.openBook(book.id)
 }
 
 function handleEditBook(book: Book) {

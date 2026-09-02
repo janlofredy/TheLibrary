@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { db, seedInitialData } from '@/db'
-import type { Library, Shelf, Book, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode } from '@/types/journal'
+import type { Library, Shelf, Book, Page, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode, PaperStyle, Mood } from '@/types/journal'
 
 export const useLibraryStore = defineStore('library', () => {
   const isLoading = ref(true)
@@ -9,6 +9,11 @@ export const useLibraryStore = defineStore('library', () => {
   const currentLibraryId = ref<string>('')
   const shelves = ref<Shelf[]>([])
   const books = ref<Book[]>([])
+
+  // Desk & Pages state
+  const activeOpenedBookId = ref<string | null>(null)
+  const activePages = ref<Page[]>([])
+  const currentPageIndex = ref<number>(0)
 
   // UI Modals state
   const isBookCustomizerOpen = ref(false)
@@ -18,7 +23,6 @@ export const useLibraryStore = defineStore('library', () => {
   const editingBook = ref<Book | null>(null)
   const targetShelfIdForNewBook = ref<string | null>(null)
   const editingShelf = ref<Shelf | null>(null)
-  const activeOpenedBookId = ref<string | null>(null)
 
   // Getters
   const currentLibrary = computed(() => {
@@ -37,6 +41,15 @@ export const useLibraryStore = defineStore('library', () => {
       .filter(b => b.shelfId === shelfId)
       .sort((a, b) => a.slotIndex - b.slotIndex || a.stackOrder - b.stackOrder)
   }
+
+  const activeOpenedBook = computed(() => {
+    if (!activeOpenedBookId.value) return null
+    return books.value.find(b => b.id === activeOpenedBookId.value) || null
+  })
+
+  const currentPage = computed(() => {
+    return activePages.value[currentPageIndex.value] || null
+  })
 
   const libraryStats = computed(() => {
     const shelfIds = new Set(currentShelves.value.map(s => s.id))
@@ -193,6 +206,23 @@ export const useLibraryStore = defineStore('library', () => {
 
     await db.books.add(newBook)
     books.value.push(newBook)
+
+    // Automatically create initial page 1
+    const firstPage: Page = {
+      id: `pg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      bookId: newBook.id,
+      pageNumber: 1,
+      title: 'First Page',
+      entryDate: now,
+      paperStyle: 'lined',
+      tags: [],
+      wordCount: 0,
+      content: '',
+      createdAt: now,
+      updatedAt: now,
+    }
+    await db.pages.add(firstPage)
+
     return newBook
   }
 
@@ -209,6 +239,124 @@ export const useLibraryStore = defineStore('library', () => {
     await db.pages.where('bookId').equals(id).delete()
     await db.books.delete(id)
     books.value = books.value.filter(b => b.id !== id)
+    if (activeOpenedBookId.value === id) {
+      closeBook()
+    }
+  }
+
+  // Desk and Page Actions
+  async function openBook(bookId: string) {
+    activeOpenedBookId.value = bookId
+    const pages = await db.pages.where('bookId').equals(bookId).sortBy('pageNumber')
+    
+    if (pages.length === 0) {
+      // Create first starter page if empty
+      const now = new Date().toISOString()
+      const starterPage: Page = {
+        id: `pg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        bookId,
+        pageNumber: 1,
+        title: 'Untitled Page',
+        entryDate: now,
+        paperStyle: 'lined',
+        tags: [],
+        wordCount: 0,
+        content: '',
+        createdAt: now,
+        updatedAt: now,
+      }
+      await db.pages.add(starterPage)
+      activePages.value = [starterPage]
+    } else {
+      activePages.value = pages
+    }
+
+    currentPageIndex.value = 0
+  }
+
+  async function closeBook() {
+    if (activeOpenedBookId.value) {
+      // Synchronize final page count to book record
+      const actualCount = await db.pages.where('bookId').equals(activeOpenedBookId.value).count()
+      await updateBook(activeOpenedBookId.value, { pageCount: actualCount })
+    }
+    activeOpenedBookId.value = null
+    activePages.value = []
+    currentPageIndex.value = 0
+  }
+
+  async function createPage(paperStyle: PaperStyle = 'lined') {
+    if (!activeOpenedBookId.value) return null
+
+    const now = new Date().toISOString()
+    const nextNumber = activePages.value.length + 1
+    const newPage: Page = {
+      id: `pg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      bookId: activeOpenedBookId.value,
+      pageNumber: nextNumber,
+      title: `Page ${nextNumber}`,
+      entryDate: now,
+      paperStyle,
+      tags: [],
+      wordCount: 0,
+      content: '',
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    await db.pages.add(newPage)
+    activePages.value.push(newPage)
+    currentPageIndex.value = activePages.value.length - 1
+
+    // Update book's dynamic page count
+    await updateBook(activeOpenedBookId.value, { pageCount: activePages.value.length })
+    return newPage
+  }
+
+  async function updatePage(id: string, updates: Partial<Page>) {
+    const now = new Date().toISOString()
+    await db.pages.update(id, { ...updates, updatedAt: now })
+    const index = activePages.value.findIndex(p => p.id === id)
+    if (index !== -1) {
+      activePages.value[index] = { ...activePages.value[index], ...updates, updatedAt: now }
+    }
+  }
+
+  async function deletePage(id: string) {
+    if (activePages.value.length <= 1) {
+      // Clear contents if only one page remains
+      if (activePages.value[0]) {
+        await updatePage(activePages.value[0].id, {
+          title: 'Untitled Page',
+          content: '',
+          wordCount: 0,
+        })
+      }
+      return
+    }
+
+    await db.pages.delete(id)
+    activePages.value = activePages.value.filter(p => p.id !== id)
+
+    // Re-index remaining page numbers
+    for (let i = 0; i < activePages.value.length; i++) {
+      activePages.value[i].pageNumber = i + 1
+      await db.pages.update(activePages.value[i].id, { pageNumber: i + 1 })
+    }
+
+    if (currentPageIndex.value >= activePages.value.length) {
+      currentPageIndex.value = activePages.value.length - 1
+    }
+
+    if (activeOpenedBookId.value) {
+      await updateBook(activeOpenedBookId.value, { pageCount: activePages.value.length })
+    }
+  }
+
+  function setPageIndex(index: number) {
+    if (index >= 0 && index < activePages.value.length) {
+      currentPageIndex.value = index
+    }
   }
 
   // Modal helpers
@@ -248,20 +396,17 @@ export const useLibraryStore = defineStore('library', () => {
     isLibraryModalOpen.value = false
   }
 
-  function openBook(bookId: string) {
-    activeOpenedBookId.value = bookId
-  }
-
-  function closeBook() {
-    activeOpenedBookId.value = null
-  }
-
   return {
     isLoading,
     libraries,
     currentLibraryId,
     shelves,
     books,
+    activeOpenedBookId,
+    activeOpenedBook,
+    activePages,
+    currentPageIndex,
+    currentPage,
     currentLibrary,
     currentShelves,
     libraryStats,
@@ -271,7 +416,6 @@ export const useLibraryStore = defineStore('library', () => {
     editingBook,
     targetShelfIdForNewBook,
     editingShelf,
-    activeOpenedBookId,
     getBooksForShelf,
     init,
     setLibrary,
@@ -284,6 +428,12 @@ export const useLibraryStore = defineStore('library', () => {
     createBook,
     updateBook,
     deleteBook,
+    openBook,
+    closeBook,
+    createPage,
+    updatePage,
+    deletePage,
+    setPageIndex,
     openBookCustomizer,
     openNewBookModal,
     closeBookCustomizer,
@@ -291,7 +441,5 @@ export const useLibraryStore = defineStore('library', () => {
     closeShelfModal,
     openLibraryModal,
     closeLibraryModal,
-    openBook,
-    closeBook,
   }
 })
