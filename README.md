@@ -8,8 +8,10 @@
 
 - **🏛️ Multi-Level Architecture**: Organize your thoughts across **Libraries**, **Shelves**, **Books**, and **Pages**.
 - **🪵 Skeuomorphic Bookshelf**: Procedural wood grain finishes (Walnut, Oak, Mahogany, Birch, Midnight), ambient occlusion shadows, and customizable metallic nameplates (Brass, Silver, Matte Black).
-- **📖 Dynamic Book Spine Thickness**: Book spines physically expand on the shelf based on the number of written pages:
-  $$\text{Width} = \operatorname{clamp}(28\text{px},\; 32\text{px} + (\text{Page Count} \times 1.5\text{px}),\; 110\text{px})$$
+- **📖 Dynamic Book Sizing Engine**:
+  - **Thickness**: Spines physically widen with page count: $\text{Width} = \operatorname{clamp}(28\text{px},\; 32\text{px} + (\text{Page Count} \times 1.5\text{px}),\; 110\text{px})$.
+  - **Procedural Height**: Natural height variation ($190\text{px} - 265\text{px}$) deterministically generated from a hash of the book's `UUID` seed.
+- **📐 Shelf Spot Positioning & Layering**: Place books at precise shelf slots with customizable orientation (standing upright, leaning against neighbors, or horizontally stacked in layers).
 - **🎨 Deep Spine Customization**: Recustomizable spine colors, textures (Ribbed Leather, Gold Foil, Woven Cloth, Modern Matte, Vintage Parchment), title typography, foil colors, and ribbon bookmarks.
 - **✍️ Tactile Writing Desk**: 3D book-pull animation onto a distraction-free writing desk with paper textures (lined, dotted, parchment) and a rich-text / markdown editor.
 - **⚡ Ultra-Lightweight (Vue Vapor Mode)**: Zero Virtual DOM overhead, <15 KB runtime footprint, silky-smooth 60 FPS GPU-accelerated 3D transforms.

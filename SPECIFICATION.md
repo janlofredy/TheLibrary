@@ -69,18 +69,37 @@ The application is engineered to be deployed as a static site directly to **GitH
     - Fonts: *Playfair Display (Serif), Cinzel (Classic Roman), Fira Code (Technical), Caveat (Calligraphy), Inter (Modern)*.
   - **Ribbon Bookmarks**: Colored silk bookmark ribbon dangling below the shelf ledge for favorites or active journals.
 
-### 3.2 Dynamic Book Thickness Formula
-The visual width of a book on the shelf dynamically scales based on the number of written pages:
+### 3.2 Dynamic Book Sizing Engine (Thickness & Seeded Height)
+
+#### A. Dynamic Spine Thickness (Page Count Scaling)
+The visual thickness (width) of a book spine on the shelf dynamically scales based on the number of written pages:
 
 $$\text{Spine Width} = \operatorname{clamp}\left(W_{\min},\; W_{\text{base}} + (\text{Page Count} \times \Delta_{\text{page}}),\; W_{\max}\right)$$
 
 - **Minimum Spine Width ($W_{\min}$)**: `28px` (ensures readability of vertical titles on fresh books).
 - **Base Width ($W_{\text{base}}$)**: `32px`.
 - **Page Growth Factor ($\Delta_{\text{page}}$)**: `1.5px` per written page (with logarithmic scaling after 50 pages).
-- **Maximum Spine Width ($W_{\max}$)**: `110px` (keeps natural shelf proportions).
-- **Page Edge Rendering**: When books exceed `48px` width, subtle stratified paper-edge lines appear on the exposed top edge.
+- **Maximum Spine Width ($W_{\max}$)**: `110px` (maintains natural shelf proportions).
+- **Page Edge Stratification**: When books exceed `48px` in thickness, realistic paper-leaf layering renders on the top edge.
 
-### 3.3 The Reading Desk & Book-Opening Experience
+#### B. Procedural Book Height (Deterministic UUID Seed)
+To create a realistic, organic bookshelf where books have naturally varied heights (pocket editions, standard octavos, tall folios) without requiring manual configuration:
+- Every book's height is **deterministically generated using a hash of its unique `UUID`**:
+  $$\text{Seed} = \operatorname{Hash32}(\text{book.id})$$
+  $$\text{Height} = H_{\min} + \left(\frac{\text{Seed} \pmod{1000}}{1000} \times (H_{\max} - H_{\min})\right)$$
+- **Height Bounds**: $H_{\min} = 190\text{px}$ (Compact/Pocket) to $H_{\max} = 265\text{px}$ (Tall Grand Volume).
+- **Consistency Guarantee**: Because the seed is derived strictly from the `book.id` UUID, a book's physical height is 100% consistent across reloads, devices, and shared views with zero storage overhead.
+
+### 3.3 Shelf Spatial Placement & Layering Modes
+Users can arrange their books with tactile freedom across the shelf:
+- **Shelf Spot / Slot Positioning**: Books can be placed at specific coordinate slots or reordered with drag-and-drop, allowing intentional gaps, bookends, or decorative spacing.
+- **Layer & Stacking Orientations**:
+  - `standing`: Standard vertical upright book placement.
+  - `leaning-left` / `leaning-right`: Books casually leaning at a natural angle ($\approx -8^\circ$ to $+8^\circ$) against neighboring books or the shelf wall.
+  - `horizontal-stack`: Laying books flat horizontally in stacked layers (bottom, middle, top) with spine facing forward.
+  - `depth-layer`: Foreground, midground, and background z-layering on deep shelves.
+
+### 3.4 The Reading Desk & Book-Opening Experience
 - **Smooth 3D Perspective Transition**: Clicking a book smoothly glides it off the shelf using CSS 3D matrix transforms (`translate3d`, `rotateY`, `scale3d`) onto a focused writing desk.
 - **Tactile Paper Surfaces**: Lined notebook paper, dotted grid, vintage parchment, clean dark slate.
 - **Writing Modes**:
@@ -201,7 +220,7 @@ my-journal-library/
 ### `book.json`
 ```json
 {
-  "id": "book_101",
+  "id": "book_101_7f8a9c2b",
   "shelfId": "shelf_01",
   "title": "2026 Journal",
   "subtitle": "Volume I",
@@ -211,8 +230,12 @@ my-journal-library/
   "titleFont": "serif", // serif | roman | typewriter | calligraphy | sans
   "ribbonColor": "#D4AF37",
   "hasRibbon": true,
+  "slotIndex": 3, // Coordinate spot/slot index along the shelf
+  "layerMode": "standing", // standing | leaning-left | leaning-right | horizontal-stack
+  "stackOrder": 0, // 0 if standing, or vertical stack index (0=bottom, 1=middle, 2=top)
   "pageCount": 14,
-  "calculatedWidth": 53,
+  "calculatedWidth": 53, // Dynamically computed: clamp(28, 32 + (14 * 1.5), 110)
+  "calculatedHeight": 234, // Deterministically seeded from UUID hash: clamp(190, 265)
   "createdAt": "2026-09-02T13:30:00Z",
   "updatedAt": "2026-09-02T13:30:00Z"
 }
