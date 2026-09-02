@@ -1,126 +1,60 @@
 <template>
   <div class="relative w-full mb-8 sm:mb-12 flex flex-col group/shelf">
-    <!-- Shelf Top Ambient Occlusion Cavity -->
-    <div class="relative min-h-[300px] w-full flex items-end px-6 sm:px-12 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden">
+    <!-- Shelf Top Ambient Occlusion Cavity (Infinite Free Placement Wooden Canvas) -->
+    <div
+      ref="shelfTrack"
+      class="relative min-h-[300px] w-full flex items-end px-6 sm:px-12 pt-8 pb-1.5 overflow-x-auto overflow-y-hidden select-none cursor-crosshair"
+      @dragover.prevent="handleTrackDragOver"
+      @dragleave="handleTrackDragLeave"
+      @drop.prevent="handleTrackDrop"
+      @click="handleShelfTrackClick"
+    >
       <!-- Back Wall Ambient Shadow -->
       <div class="absolute inset-0 shelf-depth-shadow pointer-events-none -z-10"></div>
-      
-      <!-- Free Placement Spatial Zones across the Wooden Shelf (Left, Center, Right) -->
-      <div class="flex items-end justify-between w-full min-w-[700px] pb-0.5 z-10">
-        <!-- 1. LEFT ZONE (Slots 0 to 3) -->
-        <div
-          class="flex items-end gap-1 sm:gap-1.5 min-h-[265px] min-w-[120px] transition-all duration-200 rounded-t p-1"
-          :class="dragOverZone === 'left' ? 'bg-amber-400/20 border-2 border-dashed border-amber-400/80 rounded-t' : ''"
-          @dragover.prevent="handleDragOverZone($event, 'left', 0)"
-          @dragleave="handleDragLeaveZone($event, 'left')"
-          @drop.prevent="handleDropZone($event, 'left', 0)"
-        >
-          <template v-if="leftZoneBooks.length > 0">
-            <div
-              v-for="(book, idx) in leftZoneBooks"
-              :key="book.id"
-              class="relative flex items-end"
-              @dragover.prevent.stop="handleDragOverZone($event, 'left', idx)"
-              @drop.prevent.stop="handleDropZone($event, 'left', idx)"
-            >
-              <BookSpine
-                :book="book"
-                :left-neighbor="idx > 0 ? leftZoneBooks[idx - 1] : null"
-                :right-neighbor="idx < leftZoneBooks.length - 1 ? leftZoneBooks[idx + 1] : null"
-                @select="handleSelectBook"
-                @edit="handleEditBook"
-              />
-            </div>
-          </template>
 
-          <!-- Empty Left Zone Drop Target -->
-          <button
-            v-else
-            type="button"
-            class="h-44 w-24 border border-dashed border-stone-800/30 hover:border-amber-400/60 hover:bg-amber-400/10 rounded-t flex flex-col items-center justify-center text-stone-600 hover:text-amber-300 opacity-40 hover:opacity-100 transition-all cursor-pointer"
-            title="Place books on Left shelf area"
-            @click="handleAddBookInZone(0)"
-          >
-            <span class="text-base font-light">+</span>
-            <span class="text-[9px] font-mono text-stone-400 mt-1">Left Shelf</span>
-          </button>
+      <!-- Dragging Drop Indicator Marker -->
+      <div
+        v-if="dragIndicatorX !== null"
+        class="absolute bottom-1 w-1 bg-amber-400 rounded-full shadow-[0_0_12px_rgba(251,191,36,0.9)] z-40 pointer-events-none transition-all duration-75"
+        :style="{ left: `${dragIndicatorX}px`, height: '220px' }"
+      ></div>
+
+      <!-- Continuous Shelf Floor Canvas (Dynamic infinite width based on book positions) -->
+      <div
+        class="relative min-h-[265px] flex items-end z-10 pb-0.5"
+        :style="{ width: `${shelfContentWidth}px`, minWidth: '100%' }"
+      >
+        <!-- Books Rendered at their Free Coordinate Positions -->
+        <div
+          v-for="item in positionedBooks"
+          :key="item.book.id"
+          class="absolute bottom-0 flex items-end transition-transform duration-300"
+          :style="{ left: `${item.x}px` }"
+          @click.stop
+        >
+          <BookSpine
+            :book="item.book"
+            :left-neighbor="item.leftNeighbor"
+            :right-neighbor="item.rightNeighbor"
+            @select="handleSelectBook"
+            @edit="handleEditBook"
+          />
         </div>
 
-        <!-- 2. CENTER ZONE (Slots 4 to 7) -->
+        <!-- Add Book Button at trailing edge -->
         <div
-          class="flex items-end gap-1 sm:gap-1.5 min-h-[265px] min-w-[120px] transition-all duration-200 rounded-t p-1"
-          :class="dragOverZone === 'center' ? 'bg-amber-400/20 border-2 border-dashed border-amber-400/80 rounded-t' : ''"
-          @dragover.prevent="handleDragOverZone($event, 'center', 5)"
-          @dragleave="handleDragLeaveZone($event, 'center')"
-          @drop.prevent="handleDropZone($event, 'center', 5)"
+          class="absolute bottom-0 flex items-end"
+          :style="{ left: `${trailingButtonX}px` }"
+          @click.stop
         >
-          <template v-if="centerZoneBooks.length > 0">
-            <div
-              v-for="(book, idx) in centerZoneBooks"
-              :key="book.id"
-              class="relative flex items-end"
-              @dragover.prevent.stop="handleDragOverZone($event, 'center', idx + 4)"
-              @drop.prevent.stop="handleDropZone($event, 'center', idx + 4)"
-            >
-              <BookSpine
-                :book="book"
-                :left-neighbor="idx > 0 ? centerZoneBooks[idx - 1] : null"
-                :right-neighbor="idx < centerZoneBooks.length - 1 ? centerZoneBooks[idx + 1] : null"
-                @select="handleSelectBook"
-                @edit="handleEditBook"
-              />
-            </div>
-          </template>
-
-          <!-- Empty Center Zone Drop Target -->
           <button
-            v-else
             type="button"
-            class="h-44 w-24 border border-dashed border-stone-800/30 hover:border-amber-400/60 hover:bg-amber-400/10 rounded-t flex flex-col items-center justify-center text-stone-600 hover:text-amber-300 opacity-20 hover:opacity-100 transition-all cursor-pointer"
-            title="Place books in Center shelf area"
-            @click="handleAddBookInZone(5)"
+            class="h-[210px] w-12 rounded-t-sm border border-dashed border-stone-600/30 hover:border-amber-400/80 hover:bg-amber-400/10 transition-all duration-200 flex flex-col items-center justify-center text-stone-500 hover:text-amber-300 group/add cursor-pointer flex-shrink-0"
+            title="Add new Journal here"
+            @click="handleAddBookAt(trailingButtonX)"
           >
-            <span class="text-base font-light">+</span>
-            <span class="text-[9px] font-mono text-stone-400 mt-1">Center Shelf</span>
-          </button>
-        </div>
-
-        <!-- 3. RIGHT ZONE (Slots 8 to 11) -->
-        <div
-          class="flex items-end gap-1 sm:gap-1.5 min-h-[265px] min-w-[120px] transition-all duration-200 rounded-t p-1"
-          :class="dragOverZone === 'right' ? 'bg-amber-400/20 border-2 border-dashed border-amber-400/80 rounded-t' : ''"
-          @dragover.prevent="handleDragOverZone($event, 'right', 10)"
-          @dragleave="handleDragLeaveZone($event, 'right')"
-          @drop.prevent="handleDropZone($event, 'right', 10)"
-        >
-          <template v-if="rightZoneBooks.length > 0">
-            <div
-              v-for="(book, idx) in rightZoneBooks"
-              :key="book.id"
-              class="relative flex items-end"
-              @dragover.prevent.stop="handleDragOverZone($event, 'right', idx + 8)"
-              @drop.prevent.stop="handleDropZone($event, 'right', idx + 8)"
-            >
-              <BookSpine
-                :book="book"
-                :left-neighbor="idx > 0 ? rightZoneBooks[idx - 1] : null"
-                :right-neighbor="idx < rightZoneBooks.length - 1 ? rightZoneBooks[idx + 1] : null"
-                @select="handleSelectBook"
-                @edit="handleEditBook"
-              />
-            </div>
-          </template>
-
-          <!-- Empty Right Zone Drop Target -->
-          <button
-            v-else
-            type="button"
-            class="h-44 w-24 border border-dashed border-stone-800/30 hover:border-amber-400/60 hover:bg-amber-400/10 rounded-t flex flex-col items-center justify-center text-stone-600 hover:text-amber-300 opacity-20 hover:opacity-100 transition-all cursor-pointer"
-            title="Place books on Right shelf area"
-            @click="handleAddBookInZone(10)"
-          >
-            <span class="text-base font-light">+</span>
-            <span class="text-[9px] font-mono text-stone-400 mt-1">Right Shelf</span>
+            <span class="text-xl font-light group-hover/add:scale-125 transition-transform">+</span>
+            <span class="text-[9px] uppercase tracking-wider font-mono mt-1 opacity-0 group-hover/add:opacity-100 transition-opacity">New</span>
           </button>
         </div>
       </div>
@@ -188,6 +122,7 @@
 import { ref, computed } from 'vue'
 import type { Shelf, Book } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { calculateSpineWidth } from '@/utils/bookSizing'
 import BookSpine from './BookSpine.vue'
 
 const props = defineProps<{
@@ -195,50 +130,131 @@ const props = defineProps<{
 }>()
 
 const store = useLibraryStore()
-const dragOverZone = ref<'left' | 'center' | 'right' | null>(null)
+const shelfTrack = ref<HTMLElement | null>(null)
+const dragIndicatorX = ref<number | null>(null)
 
 const books = computed(() => store.getBooksForShelf(props.shelf.id))
 
-// Left Zone Books (Slots 0 to 3)
-const leftZoneBooks = computed(() => {
-  return books.value
-    .filter(b => (b.slotIndex ?? 0) <= 3)
-    .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
-})
-
-// Center Zone Books (Slots 4 to 7)
-const centerZoneBooks = computed(() => {
-  return books.value
-    .filter(b => (b.slotIndex ?? 0) >= 4 && (b.slotIndex ?? 0) <= 7)
-    .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
-})
-
-// Right Zone Books (Slots 8 to 11)
-const rightZoneBooks = computed(() => {
-  return books.value
-    .filter(b => (b.slotIndex ?? 0) >= 8)
-    .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
-})
-
-function handleDragOverZone(e: DragEvent, zone: 'left' | 'center' | 'right', _targetIdx: number) {
-  e.dataTransfer!.dropEffect = 'move'
-  dragOverZone.value = zone
+interface PositionedBook {
+  book: Book
+  x: number
+  width: number
+  leftNeighbor: Book | null
+  rightNeighbor: Book | null
 }
 
-function handleDragLeaveZone(_e: DragEvent, zone: 'left' | 'center' | 'right') {
-  if (dragOverZone.value === zone) {
-    dragOverZone.value = null
+const positionedBooks = computed<PositionedBook[]>(() => {
+  if (books.value.length === 0) return []
+
+  // Assign computed x coordinates based on positionX or ordered spine widths
+  const sorted = [...books.value].sort((a, b) => {
+    if (a.positionX !== undefined && b.positionX !== undefined) {
+      return a.positionX - b.positionX
+    }
+    return (a.slotIndex ?? 0) - (b.slotIndex ?? 0)
+  })
+
+  // Calculate coordinates
+  let currentFlowX = 24
+  const calculatedItems: { book: Book; x: number; width: number }[] = []
+
+  for (const book of sorted) {
+    const isFlat = book.layerMode === 'horizontal-stack'
+    const spineW = calculateSpineWidth(book.pageCount || 0)
+    const bookWidth = isFlat ? 190 : spineW
+
+    let x = book.positionX
+    if (x === undefined || x < 0) {
+      x = currentFlowX
+    }
+
+    calculatedItems.push({
+      book,
+      x,
+      width: bookWidth,
+    })
+
+    currentFlowX = Math.max(currentFlowX, x + bookWidth + 4)
   }
+
+  // Determine neighbors based on physical proximity (within 55px contact range)
+  const result: PositionedBook[] = []
+  for (let i = 0; i < calculatedItems.length; i++) {
+    const current = calculatedItems[i]
+    let leftNeighbor: Book | null = null
+    let rightNeighbor: Book | null = null
+
+    // Check left neighbor
+    if (i > 0) {
+      const prev = calculatedItems[i - 1]
+      const distance = current.x - (prev.x + prev.width)
+      if (distance <= 55) {
+        leftNeighbor = prev.book
+      }
+    }
+
+    // Check right neighbor
+    if (i < calculatedItems.length - 1) {
+      const next = calculatedItems[i + 1]
+      const distance = next.x - (current.x + current.width)
+      if (distance <= 55) {
+        rightNeighbor = next.book
+      }
+    }
+
+    result.push({
+      book: current.book,
+      x: current.x,
+      width: current.width,
+      leftNeighbor,
+      rightNeighbor,
+    })
+  }
+
+  return result
+})
+
+const trailingButtonX = computed(() => {
+  if (positionedBooks.value.length === 0) return 24
+  const maxRight = Math.max(...positionedBooks.value.map(p => p.x + p.width))
+  return maxRight + 16
+})
+
+const shelfContentWidth = computed(() => {
+  return trailingButtonX.value + 120
+})
+
+function handleTrackDragOver(e: DragEvent) {
+  if (!shelfTrack.value) return
+  e.dataTransfer!.dropEffect = 'move'
+  const rect = shelfTrack.value.getBoundingClientRect()
+  const scrollLeft = shelfTrack.value.scrollLeft
+  dragIndicatorX.value = Math.max(0, e.clientX - rect.left + scrollLeft)
 }
 
-async function handleDropZone(e: DragEvent, _zone: 'left' | 'center' | 'right', targetSlotIdx: number) {
-  dragOverZone.value = null
-  if (!e.dataTransfer) return
+function handleTrackDragLeave() {
+  dragIndicatorX.value = null
+}
+
+async function handleTrackDrop(e: DragEvent) {
+  dragIndicatorX.value = null
+  if (!shelfTrack.value || !e.dataTransfer) return
 
   const bookId = e.dataTransfer.getData('text/plain')
   if (bookId) {
-    await store.moveBookToSlot(bookId, props.shelf.id, targetSlotIdx)
+    const rect = shelfTrack.value.getBoundingClientRect()
+    const scrollLeft = shelfTrack.value.scrollLeft
+    const dropX = Math.max(0, Math.round(e.clientX - rect.left + scrollLeft - 18))
+    await store.moveBookToPosition(bookId, props.shelf.id, dropX)
   }
+}
+
+function handleShelfTrackClick(e: MouseEvent) {
+  if (!shelfTrack.value) return
+  const rect = shelfTrack.value.getBoundingClientRect()
+  const scrollLeft = shelfTrack.value.scrollLeft
+  const clickX = Math.max(0, Math.round(e.clientX - rect.left + scrollLeft - 18))
+  handleAddBookAt(clickX)
 }
 
 function handleSelectBook(book: Book) {
@@ -249,11 +265,11 @@ function handleEditBook(book: Book) {
   store.openBookCustomizer(book)
 }
 
-function handleAddBookInZone(slotIdx: number) {
+function handleAddBookAt(positionX: number) {
   store.targetShelfIdForNewBook = props.shelf.id
   store.editingBook = null
   store.isBookCustomizerOpen = true
-  sessionStorage.setItem('target_new_book_slot', String(slotIdx))
+  sessionStorage.setItem('target_new_book_positionX', String(positionX))
 }
 
 function handleEditShelf() {

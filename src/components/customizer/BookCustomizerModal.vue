@@ -455,6 +455,9 @@ function handleClose() {
 }
 
 async function handleSave() {
+  const targetPosX = sessionStorage.getItem('target_new_book_positionX')
+  const positionX = targetPosX ? Number(targetPosX) : undefined
+
   if (isEditing.value && store.editingBook) {
     await store.updateBook(store.editingBook.id, {
       title: form.value.title,
@@ -470,7 +473,7 @@ async function handleSave() {
       pageCount: form.value.pageCount,
     })
   } else if (store.targetShelfIdForNewBook) {
-    await store.createBook({
+    const newBook = await store.createBook({
       shelfId: store.targetShelfIdForNewBook,
       title: form.value.title,
       subtitle: form.value.subtitle,
@@ -483,8 +486,12 @@ async function handleSave() {
       layerMode: form.value.layerMode,
       slotIndex: form.value.slotIndex,
     })
+    if (positionX !== undefined) {
+      await store.updateBook(newBook.id, { positionX })
+    }
   }
   sessionStorage.removeItem('target_new_book_slot')
+  sessionStorage.removeItem('target_new_book_positionX')
   store.closeBookCustomizer()
 }
 

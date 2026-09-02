@@ -264,17 +264,16 @@ export const useLibraryStore = defineStore('library', () => {
     syncEngine.scheduleSync()
   }
 
-  async function moveBookToSlot(bookId: string, targetShelfId: string, targetSlotIndex: number) {
+  async function moveBookToPosition(bookId: string, targetShelfId: string, positionX: number) {
     const targetBook = books.value.find(b => b.id === bookId)
     if (!targetBook) return
 
-    // If another book on target shelf already has this exact slot, swap their slots
-    const existingBook = books.value.find(
-      b => b.shelfId === targetShelfId && b.slotIndex === targetSlotIndex && b.id !== bookId
-    )
-    if (existingBook) {
-      await updateBook(existingBook.id, { slotIndex: targetBook.slotIndex })
-    }
+    await updateBook(bookId, { shelfId: targetShelfId, positionX })
+  }
+
+  async function moveBookToSlot(bookId: string, targetShelfId: string, targetSlotIndex: number) {
+    const targetBook = books.value.find(b => b.id === bookId)
+    if (!targetBook) return
 
     await updateBook(bookId, { shelfId: targetShelfId, slotIndex: targetSlotIndex })
   }
@@ -512,6 +511,7 @@ export const useLibraryStore = defineStore('library', () => {
     deleteShelf,
     createBook,
     updateBook,
+    moveBookToPosition,
     moveBookToSlot,
     deleteBook,
     openBook,

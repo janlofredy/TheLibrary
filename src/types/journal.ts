@@ -39,6 +39,7 @@ export interface Book {
   ribbonColor: string
   hasRibbon: boolean
   slotIndex: number
+  positionX?: number
   layerMode: LayerMode
   stackOrder: number
   pageCount: number
