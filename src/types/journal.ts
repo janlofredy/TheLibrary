@@ -73,3 +73,15 @@ export interface BookSizing {
   isFlat: boolean
   topEdgeDetail: boolean
 }
+
+export interface PageConflict {
+  id: string
+  bookId: string
+  bookTitle: string
+  pageNumber: number
+  localPage: Page
+  remotePage: Page
+  detectedAt: string
+  resolutionStrategy?: 'auto-merged' | 'manual-pending'
+}
+

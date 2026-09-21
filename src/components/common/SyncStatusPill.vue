@@ -1,5 +1,18 @@
 <template>
   <div class="flex items-center gap-2">
+    <!-- Unresolved Conflict Alert Button -->
+    <button
+      v-if="store.conflictsList.length > 0"
+      type="button"
+      class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/80 text-amber-200 cursor-pointer shadow-md animate-pulse"
+      title="Concurrent edit conflict detected across devices. Click to compare and merge."
+      @click.stop="store.openConflictModal()"
+    >
+      <span>⚠️</span>
+      <span>{{ store.conflictsList.length }} Conflict{{ store.conflictsList.length > 1 ? 's' : '' }}</span>
+      <span class="underline text-[10px] ml-0.5">Review</span>
+    </button>
+
     <!-- Sync Status Pill Trigger -->
     <button
       type="button"

@@ -46,6 +46,7 @@
       <LibraryModal />
       <AuthModal />
       <ShareModal />
+      <ConflictResolutionModal />
     </template>
   </div>
 </template>
@@ -63,6 +64,7 @@ import ShelfModal from '@/components/customizer/ShelfModal.vue'
 import LibraryModal from '@/components/customizer/LibraryModal.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
 import ShareModal from '@/components/share/ShareModal.vue'
+import ConflictResolutionModal from '@/components/common/ConflictResolutionModal.vue'
 
 const store = useLibraryStore()
 

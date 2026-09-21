@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { db, seedInitialData } from '@/db'
-import type { Library, Shelf, Book, Page, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode, PaperStyle } from '@/types/journal'
+import type { Library, Shelf, Book, Page, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode, PaperStyle, PageConflict } from '@/types/journal'
 import { syncEngine } from '@/services/gitSyncEngine'
 import { getStoredSession } from '@/services/githubAuth'
 
@@ -25,6 +25,9 @@ export const useLibraryStore = defineStore('library', () => {
   const isLibraryModalOpen = ref(false)
   const isAuthModalOpen = ref(false)
   const isShareModalOpen = ref(false)
+  const isConflictModalOpen = ref(false)
+  const activeConflict = ref<PageConflict | null>(null)
+  const conflictsList = ref<PageConflict[]>([])
   const shareTarget = ref<{ type: 'book' | 'shelf' | 'library'; id: string } | null>(null)
   const sharedGistId = ref<string | null>(null)
   
@@ -88,6 +91,19 @@ export const useLibraryStore = defineStore('library', () => {
       if (gist) {
         sharedGistId.value = gist
       }
+
+      // Subscribe to sync conflict detector
+      syncEngine.onConflict((conflict) => {
+        const exists = conflictsList.value.some(c => c.localPage.id === conflict.localPage.id)
+        if (!exists) {
+          conflictsList.value.push(conflict)
+          syncEngine.updateConflictCount(conflictsList.value.length)
+        }
+        if (!activeConflict.value) {
+          activeConflict.value = conflict
+          isConflictModalOpen.value = true
+        }
+      })
 
       // If user is authenticated, attempt background pull
       const session = getStoredSession()
@@ -473,6 +489,89 @@ export const useLibraryStore = defineStore('library', () => {
     shareTarget.value = null
   }
 
+  function openConflictModal(conflict?: PageConflict) {
+    if (conflict) {
+      activeConflict.value = conflict
+    } else if (conflictsList.value.length > 0) {
+      activeConflict.value = conflictsList.value[0]
+    }
+    isConflictModalOpen.value = true
+  }
+
+  function closeConflictModal() {
+    isConflictModalOpen.value = false
+  }
+
+  async function resolveConflict(conflictId: string, choice: 'keep-local' | 'keep-remote' | 'combine' | 'keep-both') {
+    const conflict = conflictsList.value.find(c => c.id === conflictId) || activeConflict.value
+    if (!conflict) return
+
+    const now = new Date().toISOString()
+
+    if (choice === 'keep-local') {
+      // Keep local page in Dexie, update timestamp and schedule sync to overwrite remote
+      await db.pages.update(conflict.localPage.id, { updatedAt: now })
+      syncEngine.scheduleSync(3000)
+    } else if (choice === 'keep-remote') {
+      // Overwrite local page with cloud version
+      await db.pages.put({ ...conflict.remotePage, updatedAt: now })
+    } else if (choice === 'combine') {
+      // Append remote text to local
+      const localHtml = typeof conflict.localPage.content === 'string' ? conflict.localPage.content : ''
+      const remoteHtml = typeof conflict.remotePage.content === 'string' ? conflict.remotePage.content : ''
+      const combinedHtml = `${localHtml}<hr><h3>Combined Remote Changes (${new Date(conflict.remotePage.updatedAt).toLocaleTimeString()})</h3>${remoteHtml}`
+      const combinedText = `${conflict.localPage.plainText || ''}\n\n--- Combined Remote Changes ---\n${conflict.remotePage.plainText || ''}`
+      const combinedWordCount = (conflict.localPage.wordCount || 0) + (conflict.remotePage.wordCount || 0)
+
+      await db.pages.update(conflict.localPage.id, {
+        content: combinedHtml,
+        plainText: combinedText,
+        wordCount: combinedWordCount,
+        updatedAt: now,
+      })
+      syncEngine.scheduleSync(3000)
+    } else if (choice === 'keep-both') {
+      // Keep local as is, insert remote as an additional page
+      const currentBookPages = await db.pages.where('bookId').equals(conflict.bookId).sortBy('pageNumber')
+      const insertAt = conflict.pageNumber + 1
+
+      for (const p of currentBookPages.filter(p => p.pageNumber >= insertAt)) {
+        await db.pages.update(p.id, { pageNumber: p.pageNumber + 1 })
+      }
+
+      const newPage: Page = {
+        ...conflict.remotePage,
+        id: `page_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title: `${conflict.remotePage.title} (Cloud Copy)`,
+        pageNumber: insertAt,
+        createdAt: now,
+        updatedAt: now,
+      }
+      await db.pages.add(newPage)
+
+      const book = await db.books.get(conflict.bookId)
+      if (book) {
+        await db.books.update(book.id, { pageCount: (book.pageCount || 0) + 1 })
+      }
+      syncEngine.scheduleSync(3000)
+    }
+
+    conflictsList.value = conflictsList.value.filter(c => c.id !== conflictId)
+    syncEngine.updateConflictCount(conflictsList.value.length)
+
+    if (conflictsList.value.length > 0) {
+      activeConflict.value = conflictsList.value[0]
+    } else {
+      activeConflict.value = null
+      isConflictModalOpen.value = false
+    }
+
+    await loadAll()
+    if (activeOpenedBookId.value === conflict.bookId) {
+      activePages.value = await db.pages.where('bookId').equals(conflict.bookId).sortBy('pageNumber')
+    }
+  }
+
   return {
     isLoading,
     libraries,
@@ -495,6 +594,9 @@ export const useLibraryStore = defineStore('library', () => {
     isLibraryModalOpen,
     isAuthModalOpen,
     isShareModalOpen,
+    isConflictModalOpen,
+    activeConflict,
+    conflictsList,
     shareTarget,
     sharedGistId,
     editingBook,
@@ -533,5 +635,8 @@ export const useLibraryStore = defineStore('library', () => {
     closeAuthModal,
     openShareModal,
     closeShareModal,
+    openConflictModal,
+    closeConflictModal,
+    resolveConflict,
   }
 })

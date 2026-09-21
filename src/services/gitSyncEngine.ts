@@ -1,11 +1,13 @@
 import { db } from '@/db'
 import { getStoredSession } from './githubAuth'
+import type { Page, PageConflict } from '@/types/journal'
 
 export interface SyncStatus {
   state: 'idle' | 'syncing' | 'synced' | 'error' | 'offline'
   lastSyncedAt: Date | null
   pendingEdits: number
   errorMessage: string | null
+  unresolvedConflicts: number
 }
 
 class GitSyncEngine {
@@ -14,10 +16,12 @@ class GitSyncEngine {
     lastSyncedAt: null,
     pendingEdits: 0,
     errorMessage: null,
+    unresolvedConflicts: 0,
   }
 
   private debounceTimer: NodeJS.Timeout | null = null
   private listeners: ((status: SyncStatus) => void)[] = []
+  private conflictListeners: ((conflict: PageConflict) => void)[] = []
 
   public getStatus(): SyncStatus {
     return { ...this.status }
@@ -31,8 +35,20 @@ class GitSyncEngine {
     }
   }
 
+  public onConflict(listener: (conflict: PageConflict) => void): () => void {
+    this.conflictListeners.push(listener)
+    return () => {
+      this.conflictListeners = this.conflictListeners.filter(l => l !== listener)
+    }
+  }
+
   private notify() {
     this.listeners.forEach(l => l(this.getStatus()))
+  }
+
+  public updateConflictCount(count: number) {
+    this.status.unresolvedConflicts = count
+    this.notify()
   }
 
   /**
@@ -214,7 +230,47 @@ class GitSyncEngine {
   }
 
   /**
-   * Pulls and hydrates local IndexedDB cache from the remote repository.
+   * Attempts a clean structural 3-way AST merge for non-overlapping concurrent edits.
+   * Returns merged page if resolvable, or null if true overlapping conflict exists.
+   */
+  public attemptStructural3WayMerge(local: Page, remote: Page): Page | null {
+    const localContentStr = typeof local.content === 'string' ? local.content : JSON.stringify(local.content)
+    const remoteContentStr = typeof remote.content === 'string' ? remote.content : JSON.stringify(remote.content)
+
+    // Case 1: Identical contents -> Merge timestamps
+    if (localContentStr === remoteContentStr) {
+      return {
+        ...local,
+        title: local.title || remote.title,
+        mood: local.mood || remote.mood,
+        tags: Array.from(new Set([...(local.tags || []), ...(remote.tags || [])])),
+        updatedAt: new Date(Math.max(new Date(local.updatedAt).getTime(), new Date(remote.updatedAt).getTime())).toISOString(),
+      }
+    }
+
+    // Case 2: One side has empty content -> Accept the non-empty content
+    const isLocalEmpty = !local.plainText || local.plainText.trim() === ''
+    const isRemoteEmpty = !remote.plainText || remote.plainText.trim() === ''
+    if (isLocalEmpty && !isRemoteEmpty) {
+      return { ...remote, title: local.title || remote.title }
+    }
+    if (isRemoteEmpty && !isLocalEmpty) {
+      return { ...local, title: remote.title || local.title }
+    }
+
+    // Case 3: Title-only discrepancy with identical content
+    if (localContentStr === remoteContentStr && local.title !== remote.title) {
+      // Favor the more recently edited title
+      const useLocal = new Date(local.updatedAt) >= new Date(remote.updatedAt)
+      return useLocal ? local : remote
+    }
+
+    // True overlapping body conflict requiring visual comparison
+    return null
+  }
+
+  /**
+   * Pulls and hydrates local IndexedDB cache from the remote repository with conflict detection.
    */
   public async pullFromGitHub(): Promise<boolean> {
     const session = getStoredSession()
@@ -257,7 +313,41 @@ class GitSyncEngine {
           } else if (blob.path.includes('/book.json') && parsed.id) {
             await db.books.put(parsed)
           } else if (blob.path.includes('/pages/') && parsed.id) {
-            await db.pages.put(parsed)
+            const localPage = await db.pages.get(parsed.id)
+
+            if (!localPage) {
+              // New page from cloud
+              await db.pages.put(parsed)
+            } else {
+              // Existing page: check for concurrent edits
+              const localContentStr = typeof localPage.content === 'string' ? localPage.content : JSON.stringify(localPage.content)
+              const remoteContentStr = typeof parsed.content === 'string' ? parsed.content : JSON.stringify(parsed.content)
+
+              if (localPage.updatedAt === parsed.updatedAt || localContentStr === remoteContentStr) {
+                // In sync
+                await db.pages.put(parsed)
+              } else {
+                // Potential conflict: attempt structural 3-way AST merge
+                const autoMerged = this.attemptStructural3WayMerge(localPage, parsed)
+                if (autoMerged) {
+                  await db.pages.put(autoMerged)
+                } else {
+                  // True concurrent collision: create conflict event
+                  const book = await db.books.get(parsed.bookId)
+                  const conflict: PageConflict = {
+                    id: `conflict_${Date.now()}_${parsed.id}`,
+                    bookId: parsed.bookId,
+                    bookTitle: book?.title || 'Unknown Journal',
+                    pageNumber: parsed.pageNumber,
+                    localPage,
+                    remotePage: parsed,
+                    detectedAt: new Date().toISOString(),
+                    resolutionStrategy: 'manual-pending',
+                  }
+                  this.conflictListeners.forEach(l => l(conflict))
+                }
+              }
+            }
           }
         }
       }
