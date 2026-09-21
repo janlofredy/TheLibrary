@@ -51,9 +51,28 @@
           />
         </div>
 
-        <!-- Add Book Button within shelf boundaries -->
+        <!-- Empty Shelf State Prompt (When 0 books on shelf) -->
         <div
-          v-if="canFitNewBook"
+          v-if="positionedBooks.length === 0"
+          class="absolute bottom-2 left-6 sm:left-10 flex items-center z-20 cursor-pointer group/empty"
+          @click.stop="handleAddBookAt(0)"
+        >
+          <div class="h-[200px] w-52 sm:w-64 rounded-lg border-2 border-dashed border-amber-600/40 bg-amber-950/20 hover:border-amber-400 hover:bg-amber-900/30 transition-all duration-300 flex flex-col items-center justify-center p-4 text-center group-hover/empty:scale-[1.02] shadow-inner">
+            <div class="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-lg mb-3 group-hover/empty:scale-110 group-hover/empty:bg-amber-500/30 transition-all text-amber-300">
+              ✨
+            </div>
+            <span class="font-serif-book font-bold text-sm text-amber-100 group-hover/empty:text-amber-300 transition-colors">
+              Add Your First Journal
+            </span>
+            <span class="text-[11px] font-serif text-stone-400 mt-1 leading-snug">
+              Click anywhere on this shelf to craft your first volume
+            </span>
+          </div>
+        </div>
+
+        <!-- Add Book Button within shelf boundaries (when shelf has books) -->
+        <div
+          v-else-if="canFitNewBook"
           class="absolute bottom-0 flex items-end"
           :style="{ left: `${trailingButtonX}px` }"
           @click.stop

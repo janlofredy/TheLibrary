@@ -21,7 +21,41 @@ export class JournalLibraryDB extends Dexie {
 export const db = new JournalLibraryDB()
 
 /**
- * Seeds the database with rich initial sample journals and shelves for instant interactive testing.
+ * Provisions a pristine, empty personal library for newly authenticated users.
+ * Contains 1 clean shelf and strictly 0 mock books.
+ */
+export async function provisionCleanLibrary(): Promise<void> {
+  const libraryCount = await db.libraries.count()
+  if (libraryCount > 0) return
+
+  const now = new Date().toISOString()
+  const defaultLibraryId = `lib_${Date.now()}_clean`
+
+  const defaultLibrary: Library = {
+    id: defaultLibraryId,
+    name: 'Personal Sanctuary',
+    description: 'A private sanctum of personal reflections, journals, and thoughts.',
+    woodMaterial: 'walnut',
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  const defaultShelf: Shelf = {
+    id: `shelf_${Date.now()}_main`,
+    libraryId: defaultLibraryId,
+    name: 'Main Shelf',
+    nameplateStyle: 'brass',
+    order: 0,
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  await db.libraries.add(defaultLibrary)
+  await db.shelves.add(defaultShelf)
+}
+
+/**
+ * Seeds the database with rich initial sample journals and shelves for instant interactive testing / guest demo mode.
  */
 export async function seedInitialData(): Promise<void> {
   const libraryCount = await db.libraries.count()

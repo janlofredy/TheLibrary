@@ -21,6 +21,9 @@
         @exit="store.sharedGistId = null"
       />
 
+      <!-- Grand Library Aisle Landing Page (For unauthenticated visitors not in demo mode) -->
+      <LandingView v-else-if="!store.isAuthenticated && !store.isGuestDemoMode" />
+
       <!-- Writing Desk Mode (When a Book is open and animation finished) -->
       <WritingDesk v-else-if="store.activeOpenedBookId" />
 
@@ -55,6 +58,7 @@
 import { onMounted } from 'vue'
 import { useLibraryStore } from '@/stores/libraryStore'
 import Navbar from '@/components/common/Navbar.vue'
+import LandingView from '@/components/landing/LandingView.vue'
 import BookshelfView from '@/components/bookshelf/BookshelfView.vue'
 import WritingDesk from '@/components/desk/WritingDesk.vue'
 import BookOpeningScene from '@/components/bookshelf/BookOpeningScene.vue'

@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { db, seedInitialData } from '@/db'
+import { db, seedInitialData, provisionCleanLibrary } from '@/db'
 import type { Library, Shelf, Book, Page, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode, PaperStyle, PageConflict } from '@/types/journal'
 import { syncEngine } from '@/services/gitSyncEngine'
-import { getStoredSession } from '@/services/githubAuth'
+import { getStoredSession, clearSession, type AuthSession } from '@/services/githubAuth'
 
 export const useLibraryStore = defineStore('library', () => {
   const isLoading = ref(true)
@@ -11,6 +11,11 @@ export const useLibraryStore = defineStore('library', () => {
   const currentLibraryId = ref<string>('')
   const shelves = ref<Shelf[]>([])
   const books = ref<Book[]>([])
+
+  // Authentication & Demo mode state
+  const session = ref<AuthSession | null>(getStoredSession())
+  const isAuthenticated = computed(() => !!session.value)
+  const isGuestDemoMode = ref(false)
 
   // Desk & Pages state
   const activeOpenedBookId = ref<string | null>(null)
@@ -79,10 +84,29 @@ export const useLibraryStore = defineStore('library', () => {
   async function init() {
     isLoading.value = true
     try {
-      await seedInitialData()
-      await loadAll()
-      if (libraries.value.length > 0 && !currentLibraryId.value) {
-        currentLibraryId.value = libraries.value[0].id
+      refreshSession()
+      const libCount = await db.libraries.count()
+
+      if (isAuthenticated.value) {
+        if (libCount === 0) {
+          await provisionCleanLibrary()
+        }
+        await loadAll()
+        if (libraries.value.length > 0 && !currentLibraryId.value) {
+          currentLibraryId.value = libraries.value[0].id
+        }
+
+        // If user is authenticated, attempt background pull
+        if (navigator.onLine) {
+          syncEngine.pullFromGitHub().then(() => loadAll())
+        }
+      } else {
+        if (libCount > 0) {
+          await loadAll()
+          if (libraries.value.length > 0 && !currentLibraryId.value) {
+            currentLibraryId.value = libraries.value[0].id
+          }
+        }
       }
 
       // Check if URL has ?share_gist=
@@ -104,15 +128,35 @@ export const useLibraryStore = defineStore('library', () => {
           isConflictModalOpen.value = true
         }
       })
-
-      // If user is authenticated, attempt background pull
-      const session = getStoredSession()
-      if (session && navigator.onLine) {
-        syncEngine.pullFromGitHub().then(() => loadAll())
-      }
     } finally {
       isLoading.value = false
     }
+  }
+
+  function refreshSession() {
+    session.value = getStoredSession()
+  }
+
+  async function enterGuestDemo() {
+    isGuestDemoMode.value = true
+    const count = await db.libraries.count()
+    if (count === 0) {
+      await seedInitialData()
+    }
+    await loadAll()
+    if (libraries.value.length > 0 && !currentLibraryId.value) {
+      currentLibraryId.value = libraries.value[0].id
+    }
+  }
+
+  function exitGuestDemo() {
+    isGuestDemoMode.value = false
+  }
+
+  function logout() {
+    clearSession()
+    session.value = null
+    isGuestDemoMode.value = false
   }
 
   async function loadAll() {
@@ -638,5 +682,12 @@ export const useLibraryStore = defineStore('library', () => {
     openConflictModal,
     closeConflictModal,
     resolveConflict,
+    session,
+    isAuthenticated,
+    isGuestDemoMode,
+    refreshSession,
+    enterGuestDemo,
+    exitGuestDemo,
+    logout,
   }
 })

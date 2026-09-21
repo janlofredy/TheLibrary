@@ -39,28 +39,65 @@
 
     <!-- Right Actions -->
     <div class="flex items-center gap-2 sm:gap-3">
-      <button
-        class="px-3 py-1.5 rounded text-xs font-serif-book tracking-wider border border-amber-900/60 bg-amber-950/30 hover:bg-amber-900/50 text-amber-200 transition cursor-pointer flex items-center gap-1.5"
-        @click="store.openShelfModal()"
-      >
-        <span>+</span> <span class="hidden sm:inline">New Shelf</span>
-      </button>
+      <!-- Guest Demo Banner -->
+      <div v-if="store.isGuestDemoMode" class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-[10px] font-mono text-amber-300 uppercase tracking-wider hidden md:inline">
+          👁️ Demo Mode
+        </span>
+        <button
+          type="button"
+          class="px-2.5 py-1 rounded text-xs font-serif-book font-bold bg-amber-600 hover:bg-amber-500 text-stone-950 transition cursor-pointer"
+          @click="store.openAuthModal()"
+        >
+          Sign In
+        </button>
+        <button
+          type="button"
+          class="px-2 py-1 rounded border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-stone-200 text-xs font-mono transition cursor-pointer"
+          title="Return to Landing Page"
+          @click="store.exitGuestDemo()"
+        >
+          Exit
+        </button>
+      </div>
 
-      <button
-        class="px-3.5 py-1.5 rounded text-xs font-serif-book font-semibold tracking-wider bg-amber-600 hover:bg-amber-500 text-amber-100 transition shadow cursor-pointer flex items-center gap-1.5"
-        @click="openQuickNewBook"
-      >
-        <span>+</span> <span>New Book</span>
-      </button>
+      <template v-else>
+        <button
+          class="px-3 py-1.5 rounded text-xs font-serif-book tracking-wider border border-amber-900/60 bg-amber-950/30 hover:bg-amber-900/50 text-amber-200 transition cursor-pointer flex items-center gap-1.5"
+          @click="store.openShelfModal()"
+        >
+          <span>+</span> <span class="hidden sm:inline">New Shelf</span>
+        </button>
 
-      <!-- Account / Cloud Settings Button -->
-      <button
-        class="p-2 rounded hover:bg-white/5 text-stone-400 hover:text-stone-200 text-sm transition"
-        title="GitHub Database & Sync Settings"
-        @click="store.openAuthModal()"
-      >
-        🐙
-      </button>
+        <button
+          class="px-3.5 py-1.5 rounded text-xs font-serif-book font-semibold tracking-wider bg-amber-600 hover:bg-amber-500 text-amber-100 transition shadow cursor-pointer flex items-center gap-1.5"
+          @click="openQuickNewBook"
+        >
+          <span>+</span> <span>New Book</span>
+        </button>
+
+        <!-- Account / Cloud Settings Button -->
+        <button
+          v-if="store.session?.user?.avatar_url"
+          class="flex items-center gap-2 p-1 rounded-full hover:ring-2 hover:ring-amber-500/50 transition cursor-pointer"
+          :title="`Signed in as @${store.session.user.login}`"
+          @click="store.openAuthModal()"
+        >
+          <img
+            :src="store.session.user.avatar_url"
+            :alt="store.session.user.login"
+            class="w-7 h-7 rounded-full border border-amber-500/40"
+          />
+        </button>
+        <button
+          v-else
+          class="p-2 rounded hover:bg-white/5 text-stone-400 hover:text-stone-200 text-sm transition cursor-pointer"
+          title="GitHub Database & Sync Settings"
+          @click="store.openAuthModal()"
+        >
+          🐙
+        </button>
+      </template>
     </div>
   </header>
 </template>

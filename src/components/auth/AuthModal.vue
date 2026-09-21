@@ -202,13 +202,14 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import {
   getStoredSession,
   saveSession,
-  clearSession,
   validateGitHubToken,
   ensureVaultRepo,
   type AuthSession,
 } from '@/services/githubAuth'
 import { linkGoogleAccount, unlinkGoogleAccount } from '@/services/googleAuth'
 import { syncEngine } from '@/services/gitSyncEngine'
+
+import { db, provisionCleanLibrary } from '@/db'
 
 const store = useLibraryStore()
 
@@ -254,10 +255,22 @@ async function handleConnect() {
 
     saveSession(newSession)
     session.value = newSession
+    store.refreshSession()
     tokenInput.value = ''
+
+    // Ensure pristine library exists if empty
+    const libCount = await db.libraries.count()
+    if (libCount === 0) {
+      await provisionCleanLibrary()
+    }
+    await store.loadAll()
+    if (store.libraries.length > 0 && !store.currentLibraryId) {
+      store.setLibrary(store.libraries[0].id)
+    }
 
     // Initial sync
     await syncEngine.sync()
+    store.closeAuthModal()
   } catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'Connection failed.'
   } finally {
@@ -289,6 +302,7 @@ function promptLinkGoogle() {
   if (email && email.includes('@')) {
     linkGoogleAccount(email.trim().toLowerCase())
     session.value = getStoredSession()
+    store.refreshSession()
   }
 }
 
@@ -296,12 +310,13 @@ function handleUnlinkGoogle() {
   if (confirm('Unlink Google account?')) {
     unlinkGoogleAccount()
     session.value = getStoredSession()
+    store.refreshSession()
   }
 }
 
 function handleDisconnect() {
   if (confirm('Disconnect GitHub account? (Your local journals will remain saved in browser IndexedDB).')) {
-    clearSession()
+    store.logout()
     session.value = null
   }
 }
