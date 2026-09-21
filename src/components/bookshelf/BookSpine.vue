@@ -1,11 +1,15 @@
 <template>
   <div
-    class="relative select-none cursor-grab active:cursor-grabbing group transition-all duration-300 ease-out flex-shrink-0"
+    class="relative select-none cursor-grab active:cursor-grabbing group transition-all duration-300 ease-out flex-shrink-0 touch-none"
     :class="isGhost ? 'opacity-70 pointer-events-none filter drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]' : ''"
     :style="containerWrapperStyle"
     draggable="true"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
+    @touchstart.passive="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+    @touchcancel="handleTouchEnd"
     @click="handleClick"
     @contextmenu.prevent="handleRightClick"
   >
@@ -280,8 +284,61 @@ function handleDragEnd() {
   store.activeDraggingBook = null
 }
 
+let touchStartX = 0
+let touchStartY = 0
+let isTouchDragging = false
+
+function handleTouchStart(e: TouchEvent) {
+  if (props.isGhost || e.touches.length === 0) return
+  touchStartX = e.touches[0].clientX
+  touchStartY = e.touches[0].clientY
+  isTouchDragging = false
+}
+
+function handleTouchMove(e: TouchEvent) {
+  if (props.isGhost || e.touches.length === 0) return
+  const currentX = e.touches[0].clientX
+  const currentY = e.touches[0].clientY
+  const dist = Math.hypot(currentX - touchStartX, currentY - touchStartY)
+
+  if (dist > 8) {
+    isTouchDragging = true
+    store.activeDraggingBook = props.book
+
+    window.dispatchEvent(
+      new CustomEvent('the-library:touch-drag-move', {
+        detail: {
+          bookId: props.book.id,
+          clientX: currentX,
+          clientY: currentY,
+        },
+      })
+    )
+  }
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  if (isTouchDragging) {
+    isTouchDragging = false
+    const lastX = e.changedTouches[0]?.clientX || touchStartX
+    const lastY = e.changedTouches[0]?.clientY || touchStartY
+
+    window.dispatchEvent(
+      new CustomEvent('the-library:touch-drag-end', {
+        detail: {
+          bookId: props.book.id,
+          clientX: lastX,
+          clientY: lastY,
+        },
+      })
+    )
+  }
+}
+
 function handleClick() {
-  emit('select', props.book)
+  if (!isTouchDragging) {
+    emit('select', props.book)
+  }
 }
 
 function handleRightClick() {

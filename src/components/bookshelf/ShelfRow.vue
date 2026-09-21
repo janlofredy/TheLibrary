@@ -130,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { Shelf, Book } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { calculateSpineWidth, calculateBookHeight, getBookSizing, type NeighborInfo } from '@/utils/bookSizing'
@@ -510,6 +510,77 @@ async function handleTrackDrop(e: DragEvent) {
     )
     await store.moveBookToPosition(bookId, props.shelf.id, resolvedX)
   }
+}
+
+onMounted(() => {
+  window.addEventListener('the-library:touch-drag-move', handleTouchDragMove)
+  window.addEventListener('the-library:touch-drag-end', handleTouchDragEnd)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('the-library:touch-drag-move', handleTouchDragMove)
+  window.removeEventListener('the-library:touch-drag-end', handleTouchDragEnd)
+})
+
+function handleTouchDragMove(evt: Event) {
+  const e = evt as CustomEvent
+  if (!shelfTrack.value || !store.activeDraggingBook) return
+  const { clientX, clientY } = e.detail
+  const trackRect = shelfTrack.value.getBoundingClientRect()
+
+  // Check if touch is vertically over this shelf track
+  if (clientY >= trackRect.top - 60 && clientY <= trackRect.bottom + 60) {
+    const canvasRect = shelfCanvas.value 
+      ? shelfCanvas.value.getBoundingClientRect() 
+      : trackRect
+
+    const draggingW = store.activeDraggingBook.layerMode === 'horizontal-stack'
+      ? calculateBookHeight(store.activeDraggingBook.id)
+      : calculateSpineWidth(store.activeDraggingBook.pageCount || 0)
+
+    const rawX = Math.max(0, Math.round(clientX - canvasRect.left - draggingW / 2))
+    dragIndicatorX.value = resolveNonOverlappingPosition(
+      rawX,
+      draggingW,
+      positionedBooks.value,
+      store.activeDraggingBook.id
+    )
+  } else if (dragIndicatorX.value !== null) {
+    dragIndicatorX.value = null
+  }
+}
+
+async function handleTouchDragEnd(evt: Event) {
+  const e = evt as CustomEvent
+  if (!shelfTrack.value) return
+  const { clientY, bookId } = e.detail
+  const trackRect = shelfTrack.value.getBoundingClientRect()
+
+  if (dragIndicatorX.value !== null && clientY >= trackRect.top - 70 && clientY <= trackRect.bottom + 70) {
+    const targetBookId = bookId || store.activeDraggingBook?.id
+    const targetX = dragIndicatorX.value
+    dragIndicatorX.value = null
+
+    if (targetBookId && targetX !== null) {
+      const activeBook = store.activeDraggingBook
+      const draggingW = activeBook
+        ? (activeBook.layerMode === 'horizontal-stack'
+            ? calculateBookHeight(activeBook.id)
+            : calculateSpineWidth(activeBook.pageCount || 0))
+        : 34
+
+      const resolvedX = resolveNonOverlappingPosition(
+        targetX,
+        draggingW,
+        positionedBooks.value,
+        targetBookId
+      )
+      await store.moveBookToPosition(targetBookId, props.shelf.id, resolvedX)
+    }
+  } else {
+    dragIndicatorX.value = null
+  }
+  store.activeDraggingBook = null
 }
 
 function handleShelfTrackClick(e: MouseEvent) {

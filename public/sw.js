@@ -1,4 +1,4 @@
-const CACHE_NAME = 'the-journal-library-v1'
+const CACHE_NAME = 'the-journal-library-v2'
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const ASSETS_TO_CACHE = [
   './icons/icon.svg',
 ]
 
+// Install: Cache app shell assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -15,6 +16,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting()
 })
 
+// Activate: Clean old caches and claim clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -30,6 +32,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
+// Fetch: Stale-While-Revalidate caching with offline fallback
 self.addEventListener('fetch', (event) => {
   // Pass through non-GET requests or GitHub API requests directly
   if (event.request.method !== 'GET' || event.request.url.includes('api.github.com')) {
@@ -38,23 +41,9 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch in background to update cache
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse)
-              })
-            }
-          })
-          .catch(() => {})
-        return cachedResponse
-      }
-
-      return fetch(event.request)
+      const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             const responseToCache = networkResponse.clone()
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache)
@@ -64,8 +53,23 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // Offline fallback
-          return caches.match('./index.html') as Promise<Response>
+          return cachedResponse || (caches.match('./index.html') as Promise<Response>)
         })
+
+      return cachedResponse || fetchPromise
     })
   )
+})
+
+// Background Sync API: Automatically flush pending edits when internet connectivity resumes
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-journals' || event.tag === 'github-sync') {
+    event.waitUntil(
+      self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'TRIGGER_BACKGROUND_SYNC' })
+        })
+      })
+    )
+  }
 })

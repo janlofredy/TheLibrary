@@ -23,6 +23,24 @@ class GitSyncEngine {
   private listeners: ((status: SyncStatus) => void)[] = []
   private conflictListeners: ((conflict: PageConflict) => void)[] = []
 
+  constructor() {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        if (this.status.pendingEdits > 0) {
+          this.sync()
+        }
+      })
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data?.type === 'TRIGGER_BACKGROUND_SYNC') {
+            this.sync()
+          }
+        })
+      }
+    }
+  }
+
   public getStatus(): SyncStatus {
     return { ...this.status }
   }
