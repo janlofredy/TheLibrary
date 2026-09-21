@@ -78,21 +78,29 @@
 
         <!-- Account / Cloud Settings Button -->
         <button
-          v-if="store.session?.user?.avatar_url"
+          v-if="store.session?.user?.avatar_url || store.session?.googleProfile?.picture"
           class="flex items-center gap-2 p-1 rounded-full hover:ring-2 hover:ring-amber-500/50 transition cursor-pointer"
-          :title="`Signed in as @${store.session.user.login}`"
+          :title="`Signed in as ${store.session.user.name || store.session.user.login}`"
           @click="store.openAuthModal()"
         >
           <img
-            :src="store.session.user.avatar_url"
-            :alt="store.session.user.login"
-            class="w-7 h-7 rounded-full border border-amber-500/40"
+            :src="store.session.user.avatar_url || store.session.googleProfile?.picture"
+            :alt="store.session.user.name || store.session.user.login"
+            class="w-7 h-7 rounded-full border border-amber-500/40 object-cover"
           />
+        </button>
+        <button
+          v-else-if="store.session"
+          class="p-2 rounded hover:bg-white/5 text-stone-300 hover:text-amber-200 text-sm transition cursor-pointer"
+          :title="`Signed in as ${store.session.user.name || store.session.user.login}`"
+          @click="store.openAuthModal()"
+        >
+          {{ store.session.provider === 'google' ? '🌐' : '🐙' }}
         </button>
         <button
           v-else
           class="p-2 rounded hover:bg-white/5 text-stone-400 hover:text-stone-200 text-sm transition cursor-pointer"
-          title="GitHub Database & Sync Settings"
+          title="Account & Sync Settings"
           @click="store.openAuthModal()"
         >
           🐙

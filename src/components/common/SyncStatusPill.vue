@@ -67,9 +67,14 @@ onBeforeUnmount(() => {
   if (unsubscribe) unsubscribe()
 })
 
+const hasGitVault = computed(() => !!store.session?.token)
+
 const pillClass = computed(() => {
   if (!isConnected.value) {
     return 'bg-rose-950/40 border-rose-800/60 text-rose-200 hover:bg-rose-900/60'
+  }
+  if (!hasGitVault.value) {
+    return 'bg-blue-950/40 border-blue-800/60 text-blue-200 hover:bg-blue-900/60'
   }
   switch (syncStatus.value.state) {
     case 'syncing':
@@ -87,6 +92,7 @@ const pillClass = computed(() => {
 
 const dotClass = computed(() => {
   if (!isConnected.value) return 'bg-rose-400'
+  if (!hasGitVault.value) return 'bg-blue-400'
   switch (syncStatus.value.state) {
     case 'synced': return 'bg-emerald-400'
     case 'error': return 'bg-rose-400'
@@ -97,6 +103,7 @@ const dotClass = computed(() => {
 
 const labelText = computed(() => {
   if (!isConnected.value) return 'Connect Cloud'
+  if (!hasGitVault.value) return 'Local (Google SSO)'
   if (syncStatus.value.state === 'syncing') return 'Syncing to Git...'
   if (syncStatus.value.state === 'error') return 'Sync Issue'
   if (syncStatus.value.state === 'offline') return 'Local (Offline)'
@@ -107,6 +114,7 @@ const labelText = computed(() => {
 
 const tooltipTitle = computed(() => {
   if (!isConnected.value) return 'Click to connect GitHub account and repository vault'
+  if (!hasGitVault.value) return 'Signed in via Google SSO. Click to link a GitHub repository vault.'
   if (syncStatus.value.errorMessage) return `Error: ${syncStatus.value.errorMessage}`
   if (syncStatus.value.lastSyncedAt) return `Last synced: ${syncStatus.value.lastSyncedAt.toLocaleTimeString()}`
   return 'GitHub Storage Vault Connected'

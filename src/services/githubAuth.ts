@@ -1,10 +1,20 @@
+export type AuthProvider = 'github' | 'google' | 'hybrid'
+
 export interface GitHubUser {
-  id: number
+  id: number | string
   login: string
   name: string | null
   avatar_url: string
   email: string | null
-  html_url: string
+  html_url?: string
+}
+
+export interface GoogleUserProfile {
+  email: string
+  name: string
+  picture?: string
+  sub: string
+  email_verified?: boolean
 }
 
 export interface GitHubRepo {
@@ -16,9 +26,11 @@ export interface GitHubRepo {
 }
 
 export interface AuthSession {
-  token: string
+  provider?: AuthProvider
+  token?: string
   user: GitHubUser
-  repoName: string
+  repoName?: string
+  googleProfile?: GoogleUserProfile
   linkedGoogleEmail?: string
   connectedAt: string
 }

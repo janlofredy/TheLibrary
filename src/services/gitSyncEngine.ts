@@ -88,7 +88,7 @@ class GitSyncEngine {
    */
   public async sync(): Promise<boolean> {
     const session = getStoredSession()
-    if (!session) {
+    if (!session || !session.token || !session.repoName) {
       this.status.state = 'idle'
       this.notify()
       return false
@@ -292,7 +292,7 @@ class GitSyncEngine {
    */
   public async pullFromGitHub(): Promise<boolean> {
     const session = getStoredSession()
-    if (!session) return false
+    if (!session || !session.token || !session.repoName) return false
 
     this.status.state = 'syncing'
     this.notify()

@@ -4,6 +4,7 @@ import { db, seedInitialData, provisionCleanLibrary } from '@/db'
 import type { Library, Shelf, Book, Page, WoodMaterial, NameplateStyle, SpineStyle, TitleColor, TitleFont, LayerMode, PaperStyle, PageConflict } from '@/types/journal'
 import { syncEngine } from '@/services/gitSyncEngine'
 import { getStoredSession, clearSession, type AuthSession } from '@/services/githubAuth'
+import { createGoogleSession, type GoogleUserProfile } from '@/services/googleAuth'
 
 export const useLibraryStore = defineStore('library', () => {
   const isLoading = ref(true)
@@ -16,6 +17,7 @@ export const useLibraryStore = defineStore('library', () => {
   const session = ref<AuthSession | null>(getStoredSession())
   const isAuthenticated = computed(() => !!session.value)
   const isGuestDemoMode = ref(false)
+  const activeAuthTab = ref<'github' | 'google'>('github')
 
   // Desk & Pages state
   const activeOpenedBookId = ref<string | null>(null)
@@ -515,12 +517,29 @@ export const useLibraryStore = defineStore('library', () => {
     isLibraryModalOpen.value = false
   }
 
-  function openAuthModal() {
+  function openAuthModal(tab: 'github' | 'google' = 'github') {
+    activeAuthTab.value = tab
     isAuthModalOpen.value = true
   }
 
   function closeAuthModal() {
     isAuthModalOpen.value = false
+  }
+
+  async function loginWithGoogle(profile: GoogleUserProfile) {
+    const newSession = createGoogleSession(profile)
+    session.value = newSession
+    refreshSession()
+
+    const libCount = await db.libraries.count()
+    if (libCount === 0) {
+      await provisionCleanLibrary()
+    }
+    await loadAll()
+    if (libraries.value.length > 0 && !currentLibraryId.value) {
+      currentLibraryId.value = libraries.value[0].id
+    }
+    closeAuthModal()
   }
 
   function openShareModal(type: 'book' | 'shelf' | 'library', id: string) {
@@ -685,9 +704,11 @@ export const useLibraryStore = defineStore('library', () => {
     session,
     isAuthenticated,
     isGuestDemoMode,
+    activeAuthTab,
     refreshSession,
     enterGuestDemo,
     exitGuestDemo,
     logout,
+    loginWithGoogle,
   }
 })
