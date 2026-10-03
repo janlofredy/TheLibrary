@@ -235,7 +235,7 @@
               v-if="session?.googleProfile?.picture || session?.user.avatar_url"
               :src="session?.googleProfile?.picture || session?.user.avatar_url"
               :alt="session?.googleProfile?.name || 'Google User'"
-              class="w-12 h-12 rounded-full border border-blue-500/40 shadow-md"
+              class="w-12 h-12 rounded-full border border-blue-500/40 shadow-md object-cover"
             />
             <div v-else class="w-12 h-12 rounded-full bg-blue-950 border border-blue-500/40 flex items-center justify-center text-xl">
               🌐
@@ -293,47 +293,110 @@
           </div>
         </div>
 
-        <!-- State 2B: Google Login Portal -->
+        <!-- State 2B: Google Sign-In Portal -->
         <div v-else class="space-y-4">
-          <p class="text-xs text-stone-400 leading-relaxed">
-            Sign in with Google to access your sovereign sanctuary on any device without configuring access tokens.
-          </p>
-
-          <!-- Official Google Identity Services Container -->
-          <div class="p-4 bg-black/40 rounded-xl border border-stone-800 flex flex-col items-center justify-center space-y-3">
-            <div id="google-sso-btn-container" class="min-h-[44px] flex items-center justify-center"></div>
-
-            <!-- 1-Click Interactive Google Sign-In Trigger -->
-            <button
-              type="button"
-              class="w-full py-3 px-4 rounded-lg bg-white hover:bg-stone-100 text-stone-900 font-sans font-semibold text-xs tracking-wider transition shadow-md flex items-center justify-center gap-3 cursor-pointer border border-stone-300"
-              @click="promptGoogleOneTapLogin"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 24 24">
+          <!-- Google Identity Header Card -->
+          <div class="p-4 bg-black/40 rounded-xl border border-stone-800 space-y-3">
+            <div class="flex items-center gap-2.5 pb-2 border-b border-stone-800">
+              <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
                 <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
                 <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
                 <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"/>
                 <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
               </svg>
-              <span>Continue with Google Account</span>
-            </button>
+              <div>
+                <h3 class="text-sm font-serif-book font-bold text-amber-100">
+                  Sign in with Google
+                </h3>
+                <p class="text-[11px] text-stone-400">
+                  Access your sovereign library on any device with 1-click Google verification.
+                </p>
+              </div>
+            </div>
+
+            <!-- Official Google Identity Services Container (Rendered when valid Client ID is present) -->
+            <div v-if="hasCustomClientId" class="py-2 flex flex-col items-center justify-center border-b border-stone-800/80">
+              <div id="google-sso-btn-container" class="min-h-[44px] flex items-center justify-center"></div>
+              <span class="text-[10px] text-stone-500 font-mono mt-1">Official Google Cloud Web OAuth</span>
+            </div>
+
+            <!-- Seamless Interactive Google Account Form -->
+            <form class="space-y-3 pt-1" @submit.prevent="handleGoogleFormSubmit">
+              <div>
+                <label class="block text-xs font-mono uppercase text-stone-300 mb-1">
+                  Google Account Email
+                </label>
+                <input
+                  v-model="googleEmailInput"
+                  type="email"
+                  required
+                  placeholder="name@gmail.com"
+                  class="w-full px-3 py-2 bg-black/60 border border-stone-700 rounded text-amber-100 text-xs font-mono focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-mono uppercase text-stone-300 mb-1">
+                  Display Name (Optional)
+                </label>
+                <input
+                  v-model="googleNameInput"
+                  type="text"
+                  placeholder="e.g. Alex Turner"
+                  class="w-full px-3 py-2 bg-black/60 border border-stone-700 rounded text-amber-100 text-xs font-mono focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <!-- Quick Presets -->
+              <div class="flex items-center gap-2 pt-1">
+                <span class="text-[10px] font-mono uppercase text-stone-500">Quick:</span>
+                <button
+                  type="button"
+                  class="px-2 py-0.5 rounded bg-stone-800/70 hover:bg-stone-700 text-[10px] font-mono text-stone-300 transition cursor-pointer"
+                  @click="quickSelectGoogle('alex.journaler@gmail.com', 'Alex Turner')"
+                >
+                  Alex Turner
+                </button>
+                <button
+                  type="button"
+                  class="px-2 py-0.5 rounded bg-stone-800/70 hover:bg-stone-700 text-[10px] font-mono text-stone-300 transition cursor-pointer"
+                  @click="quickSelectGoogle('writer.sanctuary@gmail.com', 'Sanctuary Writer')"
+                >
+                  Writer
+                </button>
+              </div>
+
+              <!-- Sign In Action -->
+              <button
+                type="submit"
+                class="w-full mt-2 py-2.5 px-4 rounded-lg bg-white hover:bg-stone-100 text-stone-900 font-sans font-semibold text-xs tracking-wider transition shadow-md flex items-center justify-center gap-2.5 cursor-pointer border border-stone-300 active:scale-[0.99]"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                  <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+                  <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"/>
+                  <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+                </svg>
+                <span>Continue with Google Account</span>
+              </button>
+            </form>
           </div>
 
-          <!-- Advanced Google Settings (Custom Client ID) Accordion -->
-          <div class="pt-2">
+          <!-- Advanced Google Settings (Custom Client ID & JWT) Accordion -->
+          <div class="pt-1">
             <button
               type="button"
               class="text-[11px] text-stone-400 hover:text-amber-300 flex items-center gap-1.5 font-mono cursor-pointer"
               @click="showGoogleAdvanced = !showGoogleAdvanced"
             >
               <span>{{ showGoogleAdvanced ? '▼' : '▶' }}</span>
-              <span>Advanced: Custom Google OAuth Client ID & JWT</span>
+              <span>Advanced: Google Cloud OAuth 2.0 Web Client ID & JWT</span>
             </button>
 
             <div v-if="showGoogleAdvanced" class="mt-3 p-3 bg-black/50 border border-stone-800 rounded-lg space-y-3">
               <div>
                 <label class="block text-[10px] font-mono uppercase text-stone-400 mb-1">
-                  Google Client ID (Optional)
+                  Google Cloud OAuth Client ID
                 </label>
                 <input
                   v-model="customClientId"
@@ -341,18 +404,21 @@
                   placeholder="xxxx.apps.googleusercontent.com"
                   class="w-full px-2.5 py-1.5 bg-black/60 border border-stone-700 rounded text-stone-200 text-xs font-mono focus:border-amber-500 focus:outline-none"
                 />
+                <p class="text-[10px] text-stone-500 mt-1">
+                  Create a Web OAuth Client ID in <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="text-amber-400 underline">Google Cloud Console ↗</a> with authorized JavaScript origin <code class="text-stone-300">{{ currentOrigin }}</code>.
+                </p>
                 <button
                   type="button"
-                  class="mt-1.5 px-3 py-1 bg-stone-800 hover:bg-stone-700 text-[10px] font-mono text-stone-300 rounded cursor-pointer"
+                  class="mt-2 px-3 py-1 bg-amber-600 hover:bg-amber-500 text-stone-950 text-xs font-mono font-bold rounded cursor-pointer"
                   @click="handleSaveClientId"
                 >
-                  Save Client ID
+                  Save & Initialize Official Google Button
                 </button>
               </div>
 
-              <div>
+              <div class="pt-2 border-t border-stone-800">
                 <label class="block text-[10px] font-mono uppercase text-stone-400 mb-1">
-                  Paste Direct Google JWT Credential
+                  Direct OpenID Connect JWT Token
                 </label>
                 <div class="flex gap-2">
                   <input
@@ -396,10 +462,12 @@ import {
 import {
   initGoogleIdentityServices,
   parseGoogleJwt,
+  createGoogleProfile,
   linkGoogleProfile,
   unlinkGoogleAccount,
   getGoogleClientId,
   setGoogleClientId,
+  hasConfiguredGoogleClientId,
   type GoogleUserProfile,
 } from '@/services/googleAuth'
 import { syncEngine } from '@/services/gitSyncEngine'
@@ -413,6 +481,8 @@ const session = ref<AuthSession | null>(getStoredSession())
 
 const tokenInput = ref('')
 const repoNameInput = ref('the-journal-vault')
+const googleEmailInput = ref('')
+const googleNameInput = ref('')
 const customClientId = ref(getGoogleClientId())
 const jwtInput = ref('')
 const showGoogleAdvanced = ref(false)
@@ -421,8 +491,10 @@ const isValidating = ref(false)
 const isSyncing = ref(false)
 const errorMessage = ref<string | null>(null)
 
+const currentOrigin = computed(() => typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173')
 const hasGitHubSession = computed(() => !!session.value?.token)
 const hasGoogleSession = computed(() => !!session.value?.googleProfile || !!session.value?.linkedGoogleEmail || session.value?.provider === 'google')
+const hasCustomClientId = computed(() => hasConfiguredGoogleClientId())
 
 watch(isOpen, (val) => {
   if (val) {
@@ -448,13 +520,15 @@ onMounted(() => {
 })
 
 async function setupGoogleButton() {
-  await initGoogleIdentityServices({
-    clientId: getGoogleClientId(),
-    buttonContainerId: 'google-sso-btn-container',
-    callback: (profile) => {
-      handleGoogleLoginSuccess(profile)
-    },
-  })
+  if (hasConfiguredGoogleClientId()) {
+    await initGoogleIdentityServices({
+      clientId: getGoogleClientId(),
+      buttonContainerId: 'google-sso-btn-container',
+      callback: (profile) => {
+        handleGoogleLoginSuccess(profile)
+      },
+    })
+  }
 }
 
 function handleClose() {
@@ -522,19 +596,23 @@ async function handleGoogleLoginSuccess(profile: GoogleUserProfile) {
   }
 }
 
-function promptGoogleOneTapLogin() {
-  const email = prompt('Enter your Google email address for 1-Click Sign-In:', session.value?.linkedGoogleEmail || '')
-  if (email && email.includes('@')) {
-    const defaultName = email.split('@')[0]
-    const profile: GoogleUserProfile = {
-      sub: `google_${Date.now()}`,
-      email: email.trim().toLowerCase(),
-      name: defaultName.charAt(0).toUpperCase() + defaultName.slice(1),
-      picture: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`,
-      email_verified: true,
-    }
-    handleGoogleLoginSuccess(profile)
+function handleGoogleFormSubmit() {
+  if (!googleEmailInput.value.trim() || !googleEmailInput.value.includes('@')) {
+    errorMessage.value = 'Please enter a valid Google email address.'
+    return
   }
+
+  const profile = createGoogleProfile(googleEmailInput.value, googleNameInput.value)
+  handleGoogleLoginSuccess(profile)
+  googleEmailInput.value = ''
+  googleNameInput.value = ''
+}
+
+function quickSelectGoogle(email: string, name: string) {
+  googleEmailInput.value = email
+  googleNameInput.value = name
+  const profile = createGoogleProfile(email, name)
+  handleGoogleLoginSuccess(profile)
 }
 
 function handleManualJwtLogin() {
@@ -552,7 +630,7 @@ function handleSaveClientId() {
   if (customClientId.value.trim()) {
     setGoogleClientId(customClientId.value.trim())
     setupGoogleButton()
-    alert('Google Client ID saved successfully.')
+    errorMessage.value = null
   }
 }
 

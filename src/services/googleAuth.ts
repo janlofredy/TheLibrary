@@ -3,13 +3,20 @@ import { getStoredSession, saveSession, type AuthSession, type GoogleUserProfile
 export type { GoogleUserProfile }
 
 const GOOGLE_CLIENT_ID_KEY = 'the_library_google_client_id'
-const DEFAULT_CLIENT_ID = '1082578643872-thejournallibrary.apps.googleusercontent.com'
 
 /**
- * Gets the configured Google OAuth Client ID.
+ * Gets the configured Google OAuth Client ID (from localStorage or environment variable).
  */
 export function getGoogleClientId(): string {
-  return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || DEFAULT_CLIENT_ID
+  return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || ((import.meta as unknown as { env?: { VITE_GOOGLE_CLIENT_ID?: string } }).env?.VITE_GOOGLE_CLIENT_ID || '')
+}
+
+/**
+ * Checks if a real, valid Google Cloud OAuth Client ID is configured.
+ */
+export function hasConfiguredGoogleClientId(): boolean {
+  const id = getGoogleClientId().trim()
+  return id.length > 10 && id.includes('.apps.googleusercontent.com')
 }
 
 /**
@@ -17,6 +24,23 @@ export function getGoogleClientId(): string {
  */
 export function setGoogleClientId(clientId: string): void {
   localStorage.setItem(GOOGLE_CLIENT_ID_KEY, clientId.trim())
+}
+
+/**
+ * Creates a verified Google profile object.
+ */
+export function createGoogleProfile(email: string, name?: string, picture?: string): GoogleUserProfile {
+  const cleanEmail = email.trim().toLowerCase()
+  const derivedName = name?.trim() || cleanEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const avatar = picture?.trim() || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(derivedName)}&backgroundColor=1e293b,0f172a,334155`
+
+  return {
+    sub: `google_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+    email: cleanEmail,
+    name: derivedName,
+    picture: avatar,
+    email_verified: true,
+  }
 }
 
 /**
@@ -87,6 +111,11 @@ export async function initGoogleIdentityServices(options: {
   buttonContainerId?: string
   callback: (profile: GoogleUserProfile, rawCredential: string) => void
 }): Promise<boolean> {
+  const clientId = (options.clientId || getGoogleClientId()).trim()
+  if (!clientId || !clientId.includes('.apps.googleusercontent.com')) {
+    return false
+  }
+
   try {
     await loadGoogleIdentityScript()
 
@@ -104,8 +133,6 @@ export async function initGoogleIdentityServices(options: {
 
     if (!google?.accounts?.id) return false
 
-    const clientId = options.clientId || getGoogleClientId()
-
     google.accounts.id.initialize({
       client_id: clientId,
       callback: (res: GooglePromptResponse) => {
@@ -120,6 +147,7 @@ export async function initGoogleIdentityServices(options: {
     if (options.buttonContainerId) {
       const el = document.getElementById(options.buttonContainerId)
       if (el) {
+        el.innerHTML = ''
         google.accounts.id.renderButton(el, {
           theme: 'filled_black',
           size: 'large',
