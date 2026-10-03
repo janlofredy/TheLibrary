@@ -16,8 +16,10 @@ export const useLibraryStore = defineStore('library', () => {
   // Authentication & Demo mode state
   const session = ref<AuthSession | null>(getStoredSession())
   const isAuthenticated = computed(() => !!session.value)
+  const hasGitHubVault = computed(() => !!session.value?.token)
   const isGuestDemoMode = ref(false)
-  const activeAuthTab = ref<'google' | 'vault-setup' | 'settings'>('google')
+  const hasEnteredLibrary = ref(typeof localStorage !== 'undefined' && localStorage.getItem('the_journal_library_entered') === 'true')
+  const activeAuthTab = ref<'vault-setup' | 'settings'>('vault-setup')
 
   // Desk & Pages state
   const activeOpenedBookId = ref<string | null>(null)
@@ -89,7 +91,7 @@ export const useLibraryStore = defineStore('library', () => {
       refreshSession()
       const libCount = await db.libraries.count()
 
-      if (isAuthenticated.value) {
+      if (hasEnteredLibrary.value || isAuthenticated.value) {
         if (libCount === 0) {
           await provisionCleanLibrary()
         }
@@ -98,8 +100,8 @@ export const useLibraryStore = defineStore('library', () => {
           currentLibraryId.value = libraries.value[0].id
         }
 
-        // If user is authenticated, attempt background pull
-        if (navigator.onLine) {
+        // If user has GitHub vault connected, attempt background pull
+        if (session.value?.token && navigator.onLine) {
           syncEngine.pullFromGitHub().then(() => loadAll())
         }
       } else {
@@ -139,6 +141,22 @@ export const useLibraryStore = defineStore('library', () => {
     session.value = getStoredSession()
   }
 
+  async function startLocalLibrary() {
+    isGuestDemoMode.value = false
+    hasEnteredLibrary.value = true
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('the_journal_library_entered', 'true')
+    }
+    const libCount = await db.libraries.count()
+    if (libCount === 0) {
+      await provisionCleanLibrary()
+    }
+    await loadAll()
+    if (libraries.value.length > 0 && !currentLibraryId.value) {
+      currentLibraryId.value = libraries.value[0].id
+    }
+  }
+
   async function enterGuestDemo() {
     isGuestDemoMode.value = true
     const count = await db.libraries.count()
@@ -159,6 +177,10 @@ export const useLibraryStore = defineStore('library', () => {
     clearSession()
     session.value = null
     isGuestDemoMode.value = false
+    hasEnteredLibrary.value = false
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('the_journal_library_entered')
+    }
   }
 
   async function loadAll() {
@@ -517,7 +539,7 @@ export const useLibraryStore = defineStore('library', () => {
     isLibraryModalOpen.value = false
   }
 
-  function openAuthModal(tab: 'google' | 'vault-setup' | 'settings' = 'google') {
+  function openAuthModal(tab: 'vault-setup' | 'settings' = 'vault-setup') {
     activeAuthTab.value = tab
     isAuthModalOpen.value = true
   }
@@ -710,9 +732,12 @@ export const useLibraryStore = defineStore('library', () => {
     resolveConflict,
     session,
     isAuthenticated,
+    hasGitHubVault,
+    hasEnteredLibrary,
     isGuestDemoMode,
     activeAuthTab,
     refreshSession,
+    startLocalLibrary,
     enterGuestDemo,
     exitGuestDemo,
     logout,

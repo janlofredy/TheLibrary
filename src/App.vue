@@ -21,8 +21,8 @@
         @exit="store.sharedGistId = null"
       />
 
-      <!-- Grand Library Aisle Landing Page (For unauthenticated visitors not in demo mode) -->
-      <LandingView v-else-if="!store.isAuthenticated && !store.isGuestDemoMode" />
+      <!-- Grand Library Aisle Landing Page (For visitors who haven't started/entered a library or demo) -->
+      <LandingView v-else-if="!store.hasEnteredLibrary && !store.isGuestDemoMode && !store.hasGitHubVault" />
 
       <!-- Writing Desk Mode (When a Book is open and animation finished) -->
       <WritingDesk v-else-if="store.activeOpenedBookId" />

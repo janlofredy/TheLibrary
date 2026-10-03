@@ -36,21 +36,16 @@
           @click="store.enterGuestDemo()"
         >
           <span>👁️</span>
-          <span>Explore Demo</span>
+          <span>Explore Demo Archive</span>
         </button>
 
         <button
           type="button"
           class="px-4 py-2 text-xs font-serif-book font-bold tracking-wider uppercase rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-950 transition shadow-lg shadow-amber-950/40 cursor-pointer flex items-center gap-2"
-          @click="store.openAuthModal('google')"
+          @click="store.startLocalLibrary()"
         >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24">
-            <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
-            <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
-            <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"/>
-            <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
-          </svg>
-          <span>Sign In</span>
+          <span>📖</span>
+          <span>Start Writing</span>
         </button>
       </div>
     </header>
@@ -63,7 +58,7 @@
         <!-- Brass Archway Crest -->
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#24170e]/90 border border-amber-600/40 text-amber-300 text-xs font-mono uppercase tracking-widest mb-4 shadow-md backdrop-blur-xs">
           <span>✨</span>
-          <span>Tactile • Offline-First • Sovereign Git Vaults</span>
+          <span>Tactile • 100% Offline-First • Sovereign Git Vaults</span>
         </div>
 
         <h1 class="text-4xl sm:text-6xl lg:text-7xl font-serif-book font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-amber-200 to-amber-500/80 leading-[1.1] drop-shadow-md">
@@ -71,34 +66,32 @@
         </h1>
 
         <p class="mt-4 sm:mt-6 text-sm sm:text-base lg:text-lg text-stone-300 font-serif leading-relaxed max-w-2xl mx-auto drop-shadow">
-          Step into a warm, skeuomorphic personal library. Write daily reflections, sketch creative manuscripts, and organize volumes on physical wooden shelves — stored 100% privately in your browser and synced to your private Git vault.
+          Step into a warm, skeuomorphic personal library. Write daily reflections, sketch creative manuscripts, and organize volumes on physical wooden shelves — stored 100% privately in your browser with zero login required, and syncable to your private GitHub repository.
         </p>
 
-        <!-- CTA Action Hub: Google Login Only -->
-        <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <!-- Primary Google Auth Button -->
+        <!-- CTA Action Hub: Start Local Library + Explore Demo -->
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <!-- Primary: Start Your Own Library (Saved Locally) -->
           <button
             type="button"
-            class="px-7 py-3.5 rounded-xl bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-stone-950 font-serif-book font-bold text-sm sm:text-base tracking-wider uppercase transition shadow-xl shadow-amber-950/60 flex items-center gap-3 cursor-pointer group hover:scale-[1.02] active:scale-[0.98] border border-amber-300/40"
-            @click="store.openAuthModal('google')"
+            class="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-stone-950 font-serif-book font-bold text-sm sm:text-base tracking-wider uppercase transition shadow-2xl shadow-amber-950/80 flex items-center justify-center gap-3 cursor-pointer group hover:scale-[1.02] active:scale-[0.98] border border-amber-300/50"
+            @click="store.startLocalLibrary()"
           >
-            <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
-              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
-              <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"/>
-              <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
-            </svg>
-            <span>Sign In with Google</span>
-            <span class="text-xs font-mono opacity-80 font-normal">→</span>
+            <span class="text-lg">📖</span>
+            <div class="flex flex-col text-left">
+              <span class="leading-tight">Start Your Own Library</span>
+              <span class="text-[10px] font-mono opacity-85 font-normal lowercase tracking-normal text-amber-950">saved 100% locally in browser</span>
+            </div>
+            <span class="text-xs font-mono opacity-80 font-normal ml-2">→</span>
           </button>
 
-          <!-- Explore Demo Button -->
+          <!-- Secondary: Explore Demo Archive -->
           <button
             type="button"
-            class="px-5 py-3.5 rounded-xl bg-black/40 hover:bg-black/70 text-amber-200/90 hover:text-amber-100 font-mono text-xs tracking-wider uppercase transition border border-dashed border-amber-700/50 hover:border-amber-500 flex items-center gap-2 cursor-pointer"
+            class="w-full sm:w-auto px-6 py-4 rounded-xl bg-black/50 hover:bg-black/80 text-amber-200/90 hover:text-amber-100 font-mono text-xs tracking-wider uppercase transition border border-dashed border-amber-700/50 hover:border-amber-500 flex items-center justify-center gap-2.5 cursor-pointer shadow-lg"
             @click="store.enterGuestDemo()"
           >
-            <span>🏛️</span>
+            <span class="text-base">🏛️</span>
             <span>Explore Demo Archive</span>
           </button>
         </div>

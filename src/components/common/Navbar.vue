@@ -42,18 +42,19 @@
       <!-- Guest Demo Banner -->
       <div v-if="store.isGuestDemoMode" class="flex items-center gap-2">
         <span class="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-[10px] font-mono text-amber-300 uppercase tracking-wider hidden md:inline">
-          👁️ Demo Mode
+          🏛️ Demo Archive
         </span>
         <button
           type="button"
-          class="px-2.5 py-1 rounded text-xs font-serif-book font-bold bg-amber-600 hover:bg-amber-500 text-stone-950 transition cursor-pointer"
-          @click="store.openAuthModal()"
+          class="px-3 py-1 rounded text-xs font-serif-book font-bold bg-amber-600 hover:bg-amber-500 text-stone-950 transition cursor-pointer flex items-center gap-1.5 shadow"
+          @click="store.startLocalLibrary()"
         >
-          Sign In
+          <span>📖</span>
+          <span>Start Your Own Library</span>
         </button>
         <button
           type="button"
-          class="px-2 py-1 rounded border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-stone-200 text-xs font-mono transition cursor-pointer"
+          class="px-2.5 py-1 rounded border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-stone-200 text-xs font-mono transition cursor-pointer"
           title="Return to Landing Page"
           @click="store.exitGuestDemo()"
         >
@@ -62,6 +63,18 @@
       </div>
 
       <template v-else>
+        <!-- Save Online with GitHub CTA (When unlinked) -->
+        <button
+          v-if="!store.hasGitHubVault"
+          type="button"
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono border border-amber-600/40 bg-amber-950/40 hover:bg-amber-900/60 text-amber-200 transition cursor-pointer shadow-sm"
+          title="Connect your private GitHub repository for cloud sync"
+          @click="store.openAuthModal('vault-setup')"
+        >
+          <span>🐙</span>
+          <span>Save Online with GitHub</span>
+        </button>
+
         <button
           class="px-3 py-1.5 rounded text-xs font-serif-book tracking-wider border border-amber-900/60 bg-amber-950/30 hover:bg-amber-900/50 text-amber-200 transition cursor-pointer flex items-center gap-1.5"
           @click="store.openShelfModal()"
@@ -78,30 +91,22 @@
 
         <!-- Account / Cloud Settings Button -->
         <button
-          v-if="store.session?.user?.avatar_url || store.session?.googleProfile?.picture"
-          class="flex items-center gap-2 p-1 rounded-full hover:ring-2 hover:ring-amber-500/50 transition cursor-pointer"
-          :title="`Signed in as ${store.session.user.name || store.session.user.login}`"
-          @click="store.openAuthModal()"
+          v-if="store.session?.user?.avatar_url"
+          class="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-amber-500/50 transition cursor-pointer"
+          :title="`GitHub Vault: ${store.session.user.login}/${store.session.repoName || 'the-journal-vault'}`"
+          @click="store.openAuthModal('settings')"
         >
           <img
-            :src="store.session.user.avatar_url || store.session.googleProfile?.picture"
+            :src="store.session.user.avatar_url"
             :alt="store.session.user.name || store.session.user.login"
             class="w-7 h-7 rounded-full border border-amber-500/40 object-cover"
           />
         </button>
         <button
-          v-else-if="store.session"
-          class="p-2 rounded hover:bg-white/5 text-stone-300 hover:text-amber-200 text-sm transition cursor-pointer"
-          :title="`Signed in as ${store.session.user.name || store.session.user.login}`"
-          @click="store.openAuthModal()"
-        >
-          {{ store.session.provider === 'google' ? '🌐' : '🐙' }}
-        </button>
-        <button
           v-else
-          class="p-2 rounded hover:bg-white/5 text-stone-400 hover:text-stone-200 text-sm transition cursor-pointer"
-          title="Account & Sync Settings"
-          @click="store.openAuthModal()"
+          class="p-2 rounded hover:bg-white/5 text-stone-400 hover:text-amber-200 text-sm transition cursor-pointer"
+          title="Connect GitHub Vault"
+          @click="store.openAuthModal('vault-setup')"
         >
           🐙
         </button>
