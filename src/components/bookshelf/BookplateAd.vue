@@ -1,8 +1,7 @@
 <template>
   <div
-    v-if="isVisible"
     class="relative h-[210px] w-48 sm:w-56 rounded-t-sm border border-amber-600/40 bg-gradient-to-b from-[#251a13] to-[#17100b] shadow-2xl p-3 flex flex-col justify-between overflow-hidden group/sponsor cursor-pointer transition-all duration-300 hover:border-amber-400 hover:scale-[1.02]"
-    @click="openSponsorLink"
+    @click="openLink"
   >
     <!-- Gilded corner accents -->
     <div class="absolute top-1 left-1 w-2.5 h-2.5 border-t border-l border-amber-400/60 pointer-events-none"></div>
@@ -19,30 +18,30 @@
         <span>⚜️</span>
         <span>Ex Libris Patron</span>
       </div>
-      <span class="text-[8px] text-stone-500 font-mono">AD</span>
+      <span class="text-[8px] text-amber-400 font-mono">SUPPORT</span>
     </div>
 
     <!-- Center Bookplate Crest & Copy -->
     <div class="relative z-10 text-center my-auto px-1">
       <div class="text-2xl mb-1 filter drop-shadow">
-        {{ sponsor.icon }}
+        {{ item.icon }}
       </div>
       <h4 class="font-serif-book font-bold text-xs sm:text-sm text-amber-100 group-hover/sponsor:text-amber-200 transition-colors line-clamp-1">
-        {{ sponsor.title }}
+        {{ item.title }}
       </h4>
       <p class="text-[10px] text-amber-400/90 font-mono tracking-wide mt-0.5 line-clamp-1">
-        {{ sponsor.tagline }}
+        {{ item.tagline }}
       </p>
-      <p class="text-[10px] text-stone-400 font-serif italic mt-1.5 line-clamp-3 leading-snug">
-        {{ sponsor.description }}
+      <p class="text-[10px] text-stone-400 font-serif italic mt-1 line-clamp-2 leading-snug">
+        Support my open-source project
       </p>
     </div>
 
     <!-- Bottom Patron Plaque & CTA -->
     <div class="relative z-10 pt-1.5 border-t border-amber-500/20 flex items-center justify-between">
-      <span class="text-[9px] font-mono text-stone-400">Zero-Tracker</span>
+      <span class="text-[9px] font-mono text-stone-400">janlofre.com</span>
       <span class="text-[9px] font-serif-book font-bold uppercase tracking-wider text-amber-300 group-hover/sponsor:text-amber-100 transition-colors flex items-center gap-0.5">
-        {{ sponsor.callToAction }} <span>↗</span>
+        {{ item.callToAction }} <span>↗</span>
       </span>
     </div>
   </div>
@@ -50,7 +49,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getStoredAdConfig, HOUSE_SPONSORS, type HouseSponsor } from '@/services/adService'
+import { SPONSOR_ITEMS, type SponsorCardData } from '@/services/adService'
 
 const props = withDefaults(
   defineProps<{
@@ -61,21 +60,13 @@ const props = withDefaults(
   }
 )
 
-const adConfig = getStoredAdConfig()
-
-const isVisible = computed(() => {
-  if (!adConfig.enabled) return false
-  if (adConfig.isAdFreeSupporter) return false
-  return true
+const item = computed<SponsorCardData>(() => {
+  return SPONSOR_ITEMS[props.sponsorIndex % SPONSOR_ITEMS.length] || SPONSOR_ITEMS[0]
 })
 
-const sponsor = computed<HouseSponsor>(() => {
-  return HOUSE_SPONSORS[props.sponsorIndex % HOUSE_SPONSORS.length] || HOUSE_SPONSORS[0]
-})
-
-function openSponsorLink() {
-  if (sponsor.value?.url) {
-    window.open(sponsor.value.url, '_blank', 'noopener,noreferrer')
+function openLink() {
+  if (item.value?.url) {
+    window.open(item.value.url, '_blank', 'noopener,noreferrer')
   }
 }
 </script>

@@ -275,11 +275,10 @@
         </div>
       </div>
 
-      <!-- Sovereign Library Benefactors & Ethical Ad -->
+      <!-- Support Open Source Project & Creator Benefactors -->
       <div class="w-full max-w-3xl mx-auto mt-10">
         <EthicalAd
           variant="card"
-          placementType="image"
           :show-label="true"
         />
       </div>

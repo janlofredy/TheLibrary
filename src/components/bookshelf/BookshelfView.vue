@@ -119,12 +119,11 @@
         </button>
       </div>
 
-      <!-- Bookshelf Sponsor & Ethical Ad Banner -->
+      <!-- Support Open Source Banner -->
       <div class="w-full max-w-4xl mx-auto mb-16 px-4">
         <EthicalAd
           variant="banner"
-          placementType="image"
-          :allow-dismiss="true"
+          :show-label="true"
         />
       </div>
     </div>

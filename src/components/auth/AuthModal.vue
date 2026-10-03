@@ -21,11 +21,11 @@
         <button
           type="button"
           class="px-3 py-1.5 rounded-lg text-xs font-mono transition cursor-pointer flex items-center gap-1.5"
-          :class="activeModalTab === 'patron' ? 'bg-amber-950/80 text-amber-200 border border-amber-600/50' : 'text-stone-400 hover:text-stone-200'"
-          @click="activeModalTab = 'patron'"
+          :class="activeModalTab === 'support' ? 'bg-amber-950/80 text-amber-200 border border-amber-600/50' : 'text-stone-400 hover:text-stone-200'"
+          @click="activeModalTab = 'support'"
         >
-          <span>⚜️</span>
-          <span>Patron & Ads</span>
+          <span>☕</span>
+          <span>Support Creator</span>
         </button>
 
         <button
@@ -37,107 +37,114 @@
       </div>
 
       <!-- ========================================================================= -->
-      <!-- VIEW PATRON: ETHICAL ADS & AD-FREE SUPPORTER SETTINGS                    -->
+      <!-- VIEW SUPPORT: BUY ME A COFFEE, GITHUB SPONSORS & PORTFOLIO               -->
       <!-- ========================================================================= -->
-      <div v-if="activeModalTab === 'patron'" class="space-y-5">
+      <div v-if="activeModalTab === 'support'" class="space-y-5">
         <div class="flex items-center justify-between pb-3 border-b border-stone-800">
           <div class="flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-lg bg-amber-950/80 border border-amber-600/40 flex items-center justify-center text-lg">
-              ⚜️
+              ☕
             </div>
             <div>
               <h2 class="text-lg font-serif-book font-bold text-amber-100">
-                Ethical Ads & Monetization
+                Support The Journal Library
               </h2>
               <p class="text-[11px] font-mono text-amber-400/80">
-                Zero-Tracker Sponsorships • Privacy Preserving
+                Open Source & Free Forever • Developed by Janlofredy
               </p>
             </div>
           </div>
         </div>
 
-        <!-- Ethical Ads Explanation Card -->
+        <!-- Open Source Support Message Card -->
         <div class="p-4 bg-black/40 rounded-xl border border-stone-800 space-y-2">
           <div class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-amber-300">
-            <span>🛡️</span>
-            <span>Privacy Guarantee</span>
+            <span>✨</span>
+            <span>Support My Open-Source Project</span>
           </div>
           <p class="text-xs text-stone-300 font-serif leading-relaxed">
-            The Journal Library uses non-invasive, zero-cookie, zero-tracking ethical advertisements and artisan stationery house sponsorships to fund ongoing open-source maintenance. No personal data or journal contents are ever tracked or shared.
+            The Journal Library is built as a local-first, zero-tracker personal haven. If you appreciate the tactile aesthetics, Git syncing, and craft, you can support continuous development and maintenance directly:
           </p>
         </div>
 
-        <!-- Ad Settings Form -->
-        <div class="space-y-4">
-          <!-- Toggle Ad Display -->
-          <div class="p-3.5 bg-black/30 rounded-xl border border-stone-800 flex items-center justify-between">
-            <div>
-              <div class="font-serif-book font-bold text-amber-100 text-xs">
-                Display Ethical Ads & Sponsors
+        <!-- Support Channels Cards -->
+        <div class="space-y-3">
+          <!-- Buy Me a Coffee Card -->
+          <div class="p-3.5 bg-gradient-to-r from-amber-950/50 via-amber-900/30 to-amber-950/50 rounded-xl border border-amber-500/40 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl flex-shrink-0">
+                ☕
               </div>
-              <div class="text-[11px] font-mono text-stone-400 mt-0.5">
-                Shows privacy-respecting sponsor bookplates and book banners
+              <div>
+                <h4 class="font-serif-book font-bold text-xs sm:text-sm text-amber-100">
+                  Buy Me a Coffee
+                </h4>
+                <p class="text-[11px] font-mono text-amber-300/80">
+                  Quick one-time or monthly coffee boost
+                </p>
               </div>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input
-                v-model="adConfigState.enabled"
-                type="checkbox"
-                class="sr-only peer"
-                @change="handleSaveAdConfig"
-              />
-              <div class="w-11 h-6 bg-stone-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
-            </label>
+
+            <a
+              :href="CREATOR_LINKS.buyMeACoffeeUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-serif-book font-bold text-xs uppercase tracking-wider transition shadow cursor-pointer flex items-center gap-1.5 flex-shrink-0"
+            >
+              <span>Support</span> <span>↗</span>
+            </a>
           </div>
 
-          <!-- EthicalAds Network Publisher ID Option -->
-          <div class="p-3.5 bg-black/30 rounded-xl border border-stone-800 space-y-2">
-            <label class="block text-xs font-mono uppercase text-stone-300">
-              EthicalAds Publisher ID
-            </label>
-            <input
-              v-model="adConfigState.ethicalAdsPublisherId"
-              type="text"
-              placeholder="the-journal-library"
-              class="w-full px-3 py-2 bg-black/60 border border-stone-700 rounded-lg text-amber-100 text-xs font-mono focus:border-amber-500 focus:outline-none shadow-inner"
-              @change="handleSaveAdConfig"
-            />
-            <p class="text-[10px] font-mono text-stone-500">
-              Set your own EthicalAds.io publisher client ID or leave default.
-            </p>
+          <!-- GitHub Sponsors Card -->
+          <div class="p-3.5 bg-black/40 rounded-xl border border-pink-500/30 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-pink-500/10 border border-pink-500/40 flex items-center justify-center text-xl flex-shrink-0">
+                💖
+              </div>
+              <div>
+                <h4 class="font-serif-book font-bold text-xs sm:text-sm text-amber-100">
+                  GitHub Sponsors
+                </h4>
+                <p class="text-[11px] font-mono text-stone-400">
+                  Sponsor ongoing open-source engineering
+                </p>
+              </div>
+            </div>
+
+            <a
+              :href="CREATOR_LINKS.githubSponsorsUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 border border-pink-500/50 hover:border-pink-400 text-pink-200 font-serif-book font-bold text-xs uppercase tracking-wider transition shadow cursor-pointer flex items-center gap-1.5 flex-shrink-0"
+            >
+              <span>Sponsor</span> <span>↗</span>
+            </a>
           </div>
 
-          <!-- Ad-Free Supporter Pass / Sponsor CTA -->
-          <div class="p-4 bg-gradient-to-r from-amber-950/40 via-amber-900/30 to-amber-950/40 rounded-xl border border-amber-600/30 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <span class="font-serif-book font-bold text-amber-200 text-xs flex items-center gap-1.5">
-                <span>🌟</span> <span>Sovereign Patron (Ad-Free Pass)</span>
-              </span>
-              <span v-if="adConfigState.isAdFreeSupporter" class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-600/50 text-[10px] font-mono uppercase">
-                Active Patron ✓
-              </span>
+          <!-- Portfolio Link Card -->
+          <div class="p-3.5 bg-black/40 rounded-xl border border-stone-800 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-xl flex-shrink-0">
+                🌐
+              </div>
+              <div>
+                <h4 class="font-serif-book font-bold text-xs sm:text-sm text-amber-100">
+                  Portfolio & More Crafts
+                </h4>
+                <p class="text-[11px] font-mono text-stone-400">
+                  Visit janlofre.com
+                </p>
+              </div>
             </div>
-            <p class="text-xs text-stone-300 font-serif leading-relaxed">
-              Support development directly via GitHub Sponsors to permanently disable all sponsor cards across all devices.
-            </p>
-            <div class="flex items-center gap-3 pt-1">
-              <a
-                href="https://github.com/sponsors"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-950 font-serif-book font-bold text-xs uppercase tracking-wider transition cursor-pointer shadow flex items-center gap-1.5"
-              >
-                <span>💖</span> <span>Become a Sponsor</span> <span>↗</span>
-              </a>
 
-              <button
-                type="button"
-                class="px-3 py-1.5 rounded border border-stone-700 hover:border-amber-500/60 text-stone-300 text-xs font-mono cursor-pointer transition"
-                @click="toggleSupporterStatus"
-              >
-                {{ adConfigState.isAdFreeSupporter ? 'Disable Supporter Badge' : 'I am a GitHub Sponsor' }}
-              </button>
-            </div>
+            <a
+              :href="CREATOR_LINKS.portfolioUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-3.5 py-1.5 rounded-lg border border-stone-700 hover:border-sky-400 text-stone-300 hover:text-sky-200 font-mono text-xs transition cursor-pointer flex items-center gap-1.5 flex-shrink-0"
+            >
+              <span>janlofre.com</span> <span>↗</span>
+            </a>
           </div>
         </div>
       </div>
@@ -386,25 +393,11 @@ import {
 } from '@/services/githubAuth'
 import { syncEngine } from '@/services/gitSyncEngine'
 import { db, provisionCleanLibrary } from '@/db'
-import {
-  getStoredAdConfig,
-  saveStoredAdConfig,
-  type EthicalAdConfig,
-} from '@/services/adService'
+import { CREATOR_LINKS } from '@/services/adService'
 
 const store = useLibraryStore()
 
-const activeModalTab = ref<'vault' | 'patron'>('vault')
-const adConfigState = ref<EthicalAdConfig>(getStoredAdConfig())
-
-function handleSaveAdConfig() {
-  saveStoredAdConfig(adConfigState.value)
-}
-
-function toggleSupporterStatus() {
-  adConfigState.value.isAdFreeSupporter = !adConfigState.value.isAdFreeSupporter
-  saveStoredAdConfig(adConfigState.value)
-}
+const activeModalTab = ref<'vault' | 'support'>('vault')
 
 const isOpen = computed(() => store.isAuthModalOpen)
 const session = ref<AuthSession | null>(getStoredSession())

@@ -177,7 +177,6 @@
         <div class="p-3 rounded-lg bg-[#18110b]/90 border border-amber-900/40 shadow-xl backdrop-blur-xs">
           <EthicalAd
             variant="bookmark"
-            placementType="text"
             :show-label="true"
           />
         </div>

@@ -112,11 +112,10 @@
         </div>
       </div>
 
-      <!-- Reading Room Featured Sponsor / Ethical Ad -->
+      <!-- Support Open Source Project Card -->
       <div class="w-full max-w-xl mx-auto mt-6">
         <EthicalAd
           variant="card"
-          placementType="image"
           :show-label="true"
         />
       </div>

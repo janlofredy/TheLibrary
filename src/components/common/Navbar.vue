@@ -92,11 +92,12 @@
 
         <button
           type="button"
-          class="p-1.5 rounded text-xs font-mono border border-stone-800 bg-black/40 hover:border-amber-600/50 hover:bg-amber-950/40 text-stone-300 hover:text-amber-200 transition cursor-pointer flex items-center gap-1 shadow-sm"
-          title="Patron, Ethical Ads & Sponsorship Settings"
+          class="px-2.5 py-1.5 rounded text-xs font-mono border border-amber-900/40 bg-amber-950/30 hover:border-amber-500/60 hover:bg-amber-900/40 text-amber-300 hover:text-amber-100 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+          title="Support this open-source project (Buy Me a Coffee & GitHub Sponsors)"
           @click="store.openAuthModal('settings')"
         >
-          <span>⚜️</span>
+          <span>☕</span>
+          <span class="hidden xl:inline text-[11px] font-serif-book">Support</span>
         </button>
 
         <button
