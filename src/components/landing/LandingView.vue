@@ -45,7 +45,7 @@
           @click="store.startLocalLibrary()"
         >
           <span>📖</span>
-          <span>Start Writing</span>
+          <span>{{ hasLocalLibrary ? 'Continue to Library' : 'Start Writing' }}</span>
         </button>
       </div>
     </header>
@@ -69,31 +69,37 @@
           Step into a warm, skeuomorphic personal library. Write daily reflections, sketch creative manuscripts, and organize volumes on physical wooden shelves — stored 100% privately in your browser with zero login required, and syncable to your private GitHub repository.
         </p>
 
-        <!-- CTA Action Hub: Start Local Library + Explore Demo -->
-        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <!-- Primary: Start Your Own Library (Saved Locally) -->
-          <button
-            type="button"
-            class="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-stone-950 font-serif-book font-bold text-sm sm:text-base tracking-wider uppercase transition shadow-2xl shadow-amber-950/80 flex items-center justify-center gap-3 cursor-pointer group hover:scale-[1.02] active:scale-[0.98] border border-amber-300/50"
-            @click="store.startLocalLibrary()"
-          >
-            <span class="text-lg">📖</span>
-            <div class="flex flex-col text-left">
-              <span class="leading-tight">Start Your Own Library</span>
-              <span class="text-[10px] font-mono opacity-85 font-normal lowercase tracking-normal text-amber-950">saved 100% locally in browser</span>
-            </div>
-            <span class="text-xs font-mono opacity-80 font-normal ml-2">→</span>
-          </button>
+        <!-- CTA Action Hub: Continue Existing / Start New + Explore Demo -->
+        <div class="mt-8 flex flex-col items-center justify-center gap-4">
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
+            <!-- Primary CTA (Adaptive: Continue vs Start Your Own Library) -->
+            <button
+              type="button"
+              class="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-stone-950 font-serif-book font-bold text-sm sm:text-base tracking-wider uppercase transition shadow-2xl shadow-amber-950/80 flex items-center justify-center gap-3 cursor-pointer group hover:scale-[1.02] active:scale-[0.98] border border-amber-300/50"
+              @click="store.startLocalLibrary()"
+            >
+              <span class="text-xl">📖</span>
+              <div class="flex flex-col text-left">
+                <span class="leading-tight">
+                  {{ hasLocalLibrary ? 'Continue to Your Library' : 'Start Your Own Library' }}
+                </span>
+                <span class="text-[10px] font-mono opacity-85 font-normal lowercase tracking-normal text-amber-950">
+                  {{ hasLocalLibrary ? `resuming local library • ${localBooksCount} book${localBooksCount === 1 ? '' : 's'} on ${localShelvesCount} shelf${localShelvesCount === 1 ? '' : 'ves'}` : 'saved 100% locally in browser' }}
+                </span>
+              </div>
+              <span class="text-xs font-mono opacity-80 font-normal ml-2">→</span>
+            </button>
 
-          <!-- Secondary: Explore Demo Archive -->
-          <button
-            type="button"
-            class="w-full sm:w-auto px-6 py-4 rounded-xl bg-black/50 hover:bg-black/80 text-amber-200/90 hover:text-amber-100 font-mono text-xs tracking-wider uppercase transition border border-dashed border-amber-700/50 hover:border-amber-500 flex items-center justify-center gap-2.5 cursor-pointer shadow-lg"
-            @click="store.enterGuestDemo()"
-          >
-            <span class="text-base">🏛️</span>
-            <span>Explore Demo Archive</span>
-          </button>
+            <!-- Secondary: Explore Demo Archive -->
+            <button
+              type="button"
+              class="w-full sm:w-auto px-6 py-4 rounded-xl bg-black/50 hover:bg-black/80 text-amber-200/90 hover:text-amber-100 font-mono text-xs tracking-wider uppercase transition border border-dashed border-amber-700/50 hover:border-amber-500 flex items-center justify-center gap-2.5 cursor-pointer shadow-lg"
+              @click="store.enterGuestDemo()"
+            >
+              <span class="text-base">🏛️</span>
+              <span>Explore Demo Archive</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -278,9 +284,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useLibraryStore } from '@/stores/libraryStore'
 
 const store = useLibraryStore()
+
+const hasLocalLibrary = computed(() => store.libraries.length > 0)
+const localBooksCount = computed(() => store.books.length)
+const localShelvesCount = computed(() => store.shelves.length)
 
 function getParticleStyle(index: number) {
   const left = ((index * 37) % 100)

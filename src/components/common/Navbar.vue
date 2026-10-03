@@ -55,24 +55,39 @@
         <button
           type="button"
           class="px-2.5 py-1 rounded border border-stone-700 hover:border-stone-500 text-stone-400 hover:text-stone-200 text-xs font-mono transition cursor-pointer"
-          title="Return to Landing Page"
-          @click="store.exitGuestDemo()"
+          title="Return to Dashboard"
+          @click="store.exitToLanding()"
         >
           Exit
         </button>
       </div>
 
       <template v-else>
-        <!-- Save Online with GitHub CTA (When unlinked) -->
+        <!-- Save Online with GitHub CTA (Only shown when unlinked) -->
         <button
           v-if="!store.hasGitHubVault"
           type="button"
-          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono border border-amber-600/40 bg-amber-950/40 hover:bg-amber-900/60 text-amber-200 transition cursor-pointer shadow-sm"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono border border-amber-600/40 bg-amber-950/40 hover:bg-amber-900/60 text-amber-200 transition cursor-pointer shadow-sm"
           title="Connect your private GitHub repository for cloud sync"
           @click="store.openAuthModal('vault-setup')"
         >
           <span>🐙</span>
-          <span>Save Online with GitHub</span>
+          <span class="hidden sm:inline">Save Online with GitHub</span>
+          <span class="sm:hidden">Save Online</span>
+        </button>
+
+        <!-- Account / Connected Cloud Settings Button (Only shown when GitHub vault is connected) -->
+        <button
+          v-else-if="store.session?.user?.avatar_url"
+          class="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-amber-500/50 transition cursor-pointer"
+          :title="`GitHub Vault: ${store.session.user.login}/${store.session.repoName || 'the-journal-vault'}`"
+          @click="store.openAuthModal('settings')"
+        >
+          <img
+            :src="store.session.user.avatar_url"
+            :alt="store.session.user.name || store.session.user.login"
+            class="w-7 h-7 rounded-full border border-amber-500/40 object-cover"
+          />
         </button>
 
         <button
@@ -89,26 +104,14 @@
           <span>+</span> <span>New Book</span>
         </button>
 
-        <!-- Account / Cloud Settings Button -->
+        <!-- Exit to Dashboard Button -->
         <button
-          v-if="store.session?.user?.avatar_url"
-          class="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-amber-500/50 transition cursor-pointer"
-          :title="`GitHub Vault: ${store.session.user.login}/${store.session.repoName || 'the-journal-vault'}`"
-          @click="store.openAuthModal('settings')"
+          type="button"
+          class="px-2.5 py-1.5 rounded border border-stone-700/80 hover:border-stone-500 text-stone-400 hover:text-stone-200 text-xs font-mono transition cursor-pointer"
+          title="Return to Dashboard"
+          @click="store.exitToLanding()"
         >
-          <img
-            :src="store.session.user.avatar_url"
-            :alt="store.session.user.name || store.session.user.login"
-            class="w-7 h-7 rounded-full border border-amber-500/40 object-cover"
-          />
-        </button>
-        <button
-          v-else
-          class="p-2 rounded hover:bg-white/5 text-stone-400 hover:text-amber-200 text-sm transition cursor-pointer"
-          title="Connect GitHub Vault"
-          @click="store.openAuthModal('vault-setup')"
-        >
-          🐙
+          Exit
         </button>
       </template>
     </div>

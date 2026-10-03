@@ -110,6 +110,19 @@
             </button>
           </div>
         </form>
+
+        <!-- Danger Zone: Reset & Clear Local Library -->
+        <div v-if="hasLocalLibrary" class="pt-3 border-t border-stone-800/80 flex items-center justify-between text-xs font-mono">
+          <span class="text-stone-500">Local Database:</span>
+          <button
+            type="button"
+            class="text-stone-400 hover:text-rose-400 underline cursor-pointer transition flex items-center gap-1.5"
+            @click="handleWipeAll"
+          >
+            <span>🗑️</span>
+            <span>Reset & Clear Local Library</span>
+          </button>
+        </div>
       </div>
 
       <!-- ========================================================================= -->
@@ -202,15 +215,26 @@
           </div>
         </div>
 
-        <!-- Disconnect Option -->
-        <div class="pt-3 flex items-center justify-between border-t border-stone-800/80 text-xs font-mono">
-          <button
-            type="button"
-            class="text-stone-400 hover:text-rose-400 underline cursor-pointer transition"
-            @click="handleDisconnectGitHub"
-          >
-            Disconnect GitHub Vault
-          </button>
+        <!-- Disconnect & Danger Zone Options -->
+        <div class="pt-3 border-t border-stone-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
+          <div class="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              class="text-stone-400 hover:text-stone-200 underline cursor-pointer transition"
+              @click="handleDisconnectGitHub"
+            >
+              Disconnect Token Only
+            </button>
+            <span class="text-stone-600">•</span>
+            <button
+              type="button"
+              class="text-rose-400/90 hover:text-rose-300 underline cursor-pointer transition flex items-center gap-1"
+              @click="handleWipeAll"
+            >
+              <span>🗑️</span>
+              <span>Logout & Wipe Local Data</span>
+            </button>
+          </div>
 
           <button
             type="button"
@@ -243,6 +267,7 @@ const store = useLibraryStore()
 
 const isOpen = computed(() => store.isAuthModalOpen)
 const session = ref<AuthSession | null>(getStoredSession())
+const hasLocalLibrary = computed(() => store.libraries.length > 0)
 
 const tokenInput = ref('')
 const repoNameInput = ref('the-journal-vault')
@@ -337,10 +362,20 @@ async function handlePullFromGitHub() {
 }
 
 function handleDisconnectGitHub() {
-  if (confirm('Disconnect GitHub Vault? Your journals will remain 100% intact locally in your browser.')) {
+  if (confirm('Disconnect GitHub Vault token? Your local journals and shelves will remain 100% intact in this browser.')) {
     store.logout()
     session.value = null
     store.closeAuthModal()
+  }
+}
+
+async function handleWipeAll() {
+  const confirmed = confirm(
+    '⚠️ DANGER: Are you sure you want to completely wipe all local library data, shelves, books, and pages from this browser and sign out of GitHub? This action cannot be undone locally.'
+  )
+  if (confirmed) {
+    await store.resetAndClearAll()
+    session.value = null
   }
 }
 </script>

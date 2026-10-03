@@ -169,8 +169,27 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
+  const hasLocalData = computed(() => libraries.value.length > 0)
+
   function exitGuestDemo() {
     isGuestDemoMode.value = false
+    hasEnteredLibrary.value = false
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('the_journal_library_entered')
+    }
+  }
+
+  function exitToLanding() {
+    hasEnteredLibrary.value = false
+    isGuestDemoMode.value = false
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('the_journal_library_entered')
+    }
+    closeBook()
+    closeAuthModal()
+    closeLibraryModal()
+    closeShelfModal()
+    closeBookCustomizer()
   }
 
   function logout() {
@@ -181,6 +200,49 @@ export const useLibraryStore = defineStore('library', () => {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('the_journal_library_entered')
     }
+  }
+
+  async function resetAndClearAll() {
+    // 1. Clear session
+    clearSession()
+    session.value = null
+
+    // 2. Clear IndexedDB storage
+    await db.pages.clear()
+    await db.books.clear()
+    await db.shelves.clear()
+    await db.libraries.clear()
+
+    // 3. Clear local & session flags
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('the_journal_library_entered')
+      localStorage.removeItem('the_journal_library_auth')
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('sync_banner_dismissed')
+    }
+
+    // 4. Reset in-memory state
+    libraries.value = []
+    shelves.value = []
+    books.value = []
+    activePages.value = []
+    activeOpenedBookId.value = null
+    openingBook.value = null
+    isOpeningAnimationActive.value = false
+    currentLibraryId.value = ''
+    hasEnteredLibrary.value = false
+    isGuestDemoMode.value = false
+    conflictsList.value = []
+    activeConflict.value = null
+
+    // 5. Close all modals
+    closeAuthModal()
+    closeBookCustomizer()
+    closeShelfModal()
+    closeLibraryModal()
+    closeConflictModal()
+    closeShareModal()
   }
 
   async function loadAll() {
@@ -734,13 +796,16 @@ export const useLibraryStore = defineStore('library', () => {
     isAuthenticated,
     hasGitHubVault,
     hasEnteredLibrary,
+    hasLocalData,
     isGuestDemoMode,
     activeAuthTab,
     refreshSession,
     startLocalLibrary,
     enterGuestDemo,
     exitGuestDemo,
+    exitToLanding,
     logout,
+    resetAndClearAll,
     loginWithGoogle,
   }
 })
