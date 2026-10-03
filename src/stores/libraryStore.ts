@@ -17,7 +17,7 @@ export const useLibraryStore = defineStore('library', () => {
   const session = ref<AuthSession | null>(getStoredSession())
   const isAuthenticated = computed(() => !!session.value)
   const isGuestDemoMode = ref(false)
-  const activeAuthTab = ref<'github' | 'google'>('github')
+  const activeAuthTab = ref<'google' | 'vault-setup' | 'settings'>('google')
 
   // Desk & Pages state
   const activeOpenedBookId = ref<string | null>(null)
@@ -517,7 +517,7 @@ export const useLibraryStore = defineStore('library', () => {
     isLibraryModalOpen.value = false
   }
 
-  function openAuthModal(tab: 'github' | 'google' = 'github') {
+  function openAuthModal(tab: 'google' | 'vault-setup' | 'settings' = 'google') {
     activeAuthTab.value = tab
     isAuthModalOpen.value = true
   }
@@ -539,7 +539,14 @@ export const useLibraryStore = defineStore('library', () => {
     if (libraries.value.length > 0 && !currentLibraryId.value) {
       currentLibraryId.value = libraries.value[0].id
     }
-    closeAuthModal()
+
+    // First time setup prompt: Prompt user to connect GitHub PAT vault
+    if (!newSession.token) {
+      activeAuthTab.value = 'vault-setup'
+      isAuthModalOpen.value = true
+    } else {
+      closeAuthModal()
+    }
   }
 
   function openShareModal(type: 'book' | 'shelf' | 'library', id: string) {

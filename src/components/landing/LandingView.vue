@@ -41,11 +41,16 @@
 
         <button
           type="button"
-          class="px-4 py-2 text-xs font-serif-book font-bold tracking-wider uppercase rounded-lg bg-amber-600 hover:bg-amber-500 text-amber-950 hover:text-black transition shadow-lg shadow-amber-950/40 cursor-pointer flex items-center gap-2"
-          @click="store.openAuthModal()"
+          class="px-4 py-2 text-xs font-serif-book font-bold tracking-wider uppercase rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-950 transition shadow-lg shadow-amber-950/40 cursor-pointer flex items-center gap-2"
+          @click="store.openAuthModal('google')"
         >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+            <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
+            <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"/>
+            <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+          </svg>
           <span>Sign In</span>
-          <span>→</span>
         </button>
       </div>
     </header>
@@ -58,7 +63,7 @@
         <!-- Brass Archway Crest -->
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#24170e]/90 border border-amber-600/40 text-amber-300 text-xs font-mono uppercase tracking-widest mb-4 shadow-md backdrop-blur-xs">
           <span>✨</span>
-          <span>Tactile • Offline-First • Git-Backed Vaults</span>
+          <span>Tactile • Offline-First • Sovereign Git Vaults</span>
         </div>
 
         <h1 class="text-4xl sm:text-6xl lg:text-7xl font-serif-book font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-amber-100 via-amber-200 to-amber-500/80 leading-[1.1] drop-shadow-md">
@@ -69,34 +74,22 @@
           Step into a warm, skeuomorphic personal library. Write daily reflections, sketch creative manuscripts, and organize volumes on physical wooden shelves — stored 100% privately in your browser and synced to your private Git vault.
         </p>
 
-        <!-- CTA Action Hub -->
+        <!-- CTA Action Hub: Google Login Only -->
         <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <!-- Primary GitHub Auth Button -->
+          <!-- Primary Google Auth Button -->
           <button
             type="button"
-            class="px-6 py-3.5 rounded-xl bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-stone-950 font-serif-book font-bold text-sm sm:text-base tracking-wider uppercase transition shadow-xl shadow-amber-950/60 flex items-center gap-3 cursor-pointer group hover:scale-[1.02] active:scale-[0.98] border border-amber-300/40"
-            @click="store.openAuthModal('github')"
-          >
-            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-            </svg>
-            <span>Sign In with GitHub</span>
-            <span class="text-xs opacity-75 font-mono">PAT</span>
-          </button>
-
-          <!-- Google SSO / Link Button -->
-          <button
-            type="button"
-            class="px-5 py-3.5 rounded-xl bg-[#1c1612] hover:bg-[#251e19] text-stone-200 hover:text-amber-100 font-serif-book font-medium text-sm tracking-wider transition shadow-lg border border-stone-700 hover:border-amber-500/60 flex items-center gap-3 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            class="px-7 py-3.5 rounded-xl bg-gradient-to-b from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-stone-950 font-serif-book font-bold text-sm sm:text-base tracking-wider uppercase transition shadow-xl shadow-amber-950/60 flex items-center gap-3 cursor-pointer group hover:scale-[1.02] active:scale-[0.98] border border-amber-300/40"
             @click="store.openAuthModal('google')"
           >
-            <svg class="w-4 h-4" viewBox="0 0 24 24">
+            <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
               <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
               <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"/>
               <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.8s.7 5.1 1.9 7.5l3.7-2.9z"/>
               <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
             </svg>
             <span>Sign In with Google</span>
+            <span class="text-xs font-mono opacity-80 font-normal">→</span>
           </button>
 
           <!-- Explore Demo Button -->

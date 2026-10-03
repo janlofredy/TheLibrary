@@ -189,23 +189,29 @@ The bookshelf implements a deterministic first-principles physical mechanics eng
 │                                      ▼                                 │
 │ ┌────────────────────────────────────────────────────────────────────┐ │
 │ │                         LANDING PAGE                               │ │
-│ │ - Skeuomorphic hero presentation & live feature demo               │ │
+│ │ - Grand Library Aisle 3D perspective hero presentation             │ │
 │ │ - "Your Sovereign Digital Sanctuary — Private & Tactile"           │ │
-│ │ - Actions: [Sign in with GitHub]  |  [Sign in with Google]         │ │
+│ │ - Primary Action: [Sign in with Google]  |  [Explore Demo]         │ │
 │ └────────────────────────────────────┬───────────────────────────────┘ │
-│                                      │ (Requires Login)                │
+│                                      │ (Requires Google Login)         │
 │                                      ▼                                 │
 │ ┌────────────────────────────────────────────────────────────────────┐ │
-│ │                  AUTHENTICATION GATE & PROVISIONING                │ │
-│ │ - Authenticates via GitHub OAuth / PAT (or linked Google)          │ │
-│ │ - Automatically connects/provisions user's private data vault      │ │
+│ │                  GOOGLE SSO & EMPTY LIBRARY PROVISIONING           │ │
+│ │ - Authenticates with Google account (1-click / OpenID Connect)     │ │
 │ │ - Initializes a PRISTINE EMPTY LIBRARY (0 books, 1 empty shelf)    │ │
+│ └────────────────────────────────────┬───────────────────────────────┘ │
+│                                      │                                 │
+│                                      ▼ (First-Time Setup Prompt)       │
+│ ┌────────────────────────────────────────────────────────────────────┐ │
+│ │            FIRST-TIME GITHUB PAT VAULT SETUP WIZARD                │ │
+│ │ - Option 1: Input GitHub PAT -> Connects private `the-journal-vault`│ │
+│ │ - Option 2: "Skip for Now" -> Continue with 100% offline IndexedDB │ │
 │ └────────────────────────────────────┬───────────────────────────────┘ │
 │                                      │                                 │
 │                                      ▼                                 │
 │ ┌────────────────────────────────────────────────────────────────────┐ │
 │ │                    ACTIVE BOOKSHELF / LIBRARY VIEW                 │ │
-│ │ - Pristine wooden shelf with "Create Your First Journal" prompt    │ │
+│ │ - Pristine wooden shelf with "Add Your First Journal" prompt       │ │
 │ │ - Tactile drag-and-drop, physics leaning, and writing desk         │ │
 │ └────────────────────────────────────────────────────────────────────┘ │
 └────────────────────────────────────────────────────────────────────────┘
@@ -217,31 +223,27 @@ The bookshelf implements a deterministic first-principles physical mechanics eng
   - **Ambient Sanctuary Lighting**: Warm amber pools of light along polished wooden floorboards, soft sconce glows, subtle dust mote ambient particles, and rich dark wood grain aesthetics.
   - **Center-Aisle Archway & Plaque**: An ornate, engraved wooden and metallic nameplate suspended in the aisle: *"The Journal Library — Your Sovereign Sanctuary of Thought"*.
   - **Interactive Tactile Volume Showcase**: Floating feature spotlights showcasing live interactive book spines (pulling out from the aisle shelves with 3D physics tilt and material customization previews).
-  - **Authentication Portals**: Prominent skeuomorphic **"Sign in with GitHub"** (Brass / Gold embossed) and **"Sign in with Google"** (Silver / Parchment) entry buttons positioned at the center of the aisle.
+  - **Authentication Portal**: Sole primary entry button: **"Sign in with Google"** (with Google branding and 1-click account selection).
 
 #### **2. Mandatory Authentication Gate**
-- Creating a library and accessing the bookshelf workspace **strictly requires user authentication**.
+- Creating a library and accessing the bookshelf workspace **strictly requires user authentication via Google**.
 - Unauthenticated access is restricted to:
   - The **Landing Page**.
-  - **Public Reader Mode**: Direct URL links to shared books/gists (`/?gist=...` or `/?repo=...&book=...`).
+  - **Guest Demo Mode**: Live sandbox with demo archive books.
+  - **Public Reader Mode**: Direct URL links to shared books/gists (`/?share_gist=...`).
 
 #### **3. Pristine Empty Library Provisioning**
-- When a new user completes authentication for the first time:
+- When a new user completes Google authentication for the first time:
   - The app provisions their personal library (`Personal Sanctuary`) with a single clean shelf (`Main Shelf`).
   - **Strictly Empty Initialization**: The library contains **ZERO pre-populated books** ($0$ volumes), giving the user a clean slate.
   - An inviting, skeuomorphic **"Add Your First Journal"** prompt appears centered on the empty shelf ledge, guiding the user to design their first journal.
 
-#### **4. Multi-Provider Identity Model**
-- **Primary Onboarding (GitHub)**:
-  - Users sign up and establish their journal storage vault via GitHub (GitHub OAuth or Personal Access Token).
-  - Automatically provisions the user's private data repository (e.g., `the-journal-vault`).
-- **Linked Google Sign-In (Google OAuth 2.0 / OpenID Connect)**:
-  - Once the account is established via GitHub, users can link their **Google Account** in Settings with one click.
-  - **Subsequent Logins**: The user can log in using either **"Sign in with GitHub"** or **"Sign in with Google"** on any device or browser.
-  - **Identity Binding & Token Management**:
-    - The linked Google user ID (`sub`) and verified email are securely associated with the account's repository vault.
-    - Enables effortless 1-tap Google Sign-In on mobile devices without needing to re-authenticate with GitHub credentials every time.
-  - **Local Session Persistence**: Active sessions are cached securely in IndexedDB with auto-refreshing OAuth tokens for seamless offline-to-online transitions.
+#### **4. First-Time Setup: GitHub PAT Vault Wizard**
+- Upon logging in with Google for the first time:
+  - Users are presented with a warm, skeuomorphic **Vault Setup & Sovereign Cloud Sync** onboarding wizard.
+  - Users are prompted to input their **GitHub Personal Access Token (PAT)** to initialize and connect a sovereign private repository vault (e.g., `the-journal-vault`).
+  - Users may also click **"Skip for Now (Continue Offline)"** to proceed immediately with 100% offline IndexedDB storage.
+  - If skipped, users can connect their GitHub PAT repository at any time from the navigation bar.
 
 #### **2. Repository Storage Structure**
 Data is stored directly in a private/public repository (e.g. `my-journal-library`) or multi-file secret Gists:
