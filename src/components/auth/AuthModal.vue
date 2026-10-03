@@ -6,10 +6,146 @@
   >
     <div class="relative w-full max-w-lg bg-[#1c1612] border border-amber-900/50 rounded-2xl shadow-2xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto">
       
+      <!-- Tab Header for Modal (Vault Sync vs Patron & Ad Settings) -->
+      <div class="flex items-center gap-2 mb-4 border-b border-stone-800 pb-2.5">
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg text-xs font-mono transition cursor-pointer flex items-center gap-1.5"
+          :class="activeModalTab === 'vault' ? 'bg-amber-950/80 text-amber-200 border border-amber-600/50' : 'text-stone-400 hover:text-stone-200'"
+          @click="activeModalTab = 'vault'"
+        >
+          <span>🐙</span>
+          <span>Cloud Vault</span>
+        </button>
+
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg text-xs font-mono transition cursor-pointer flex items-center gap-1.5"
+          :class="activeModalTab === 'patron' ? 'bg-amber-950/80 text-amber-200 border border-amber-600/50' : 'text-stone-400 hover:text-stone-200'"
+          @click="activeModalTab = 'patron'"
+        >
+          <span>⚜️</span>
+          <span>Patron & Ads</span>
+        </button>
+
+        <button
+          class="ml-auto text-stone-400 hover:text-stone-200 text-lg p-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition"
+          @click="handleClose"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- VIEW PATRON: ETHICAL ADS & AD-FREE SUPPORTER SETTINGS                    -->
+      <!-- ========================================================================= -->
+      <div v-if="activeModalTab === 'patron'" class="space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-stone-800">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-amber-950/80 border border-amber-600/40 flex items-center justify-center text-lg">
+              ⚜️
+            </div>
+            <div>
+              <h2 class="text-lg font-serif-book font-bold text-amber-100">
+                Ethical Ads & Monetization
+              </h2>
+              <p class="text-[11px] font-mono text-amber-400/80">
+                Zero-Tracker Sponsorships • Privacy Preserving
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ethical Ads Explanation Card -->
+        <div class="p-4 bg-black/40 rounded-xl border border-stone-800 space-y-2">
+          <div class="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-amber-300">
+            <span>🛡️</span>
+            <span>Privacy Guarantee</span>
+          </div>
+          <p class="text-xs text-stone-300 font-serif leading-relaxed">
+            The Journal Library uses non-invasive, zero-cookie, zero-tracking ethical advertisements and artisan stationery house sponsorships to fund ongoing open-source maintenance. No personal data or journal contents are ever tracked or shared.
+          </p>
+        </div>
+
+        <!-- Ad Settings Form -->
+        <div class="space-y-4">
+          <!-- Toggle Ad Display -->
+          <div class="p-3.5 bg-black/30 rounded-xl border border-stone-800 flex items-center justify-between">
+            <div>
+              <div class="font-serif-book font-bold text-amber-100 text-xs">
+                Display Ethical Ads & Sponsors
+              </div>
+              <div class="text-[11px] font-mono text-stone-400 mt-0.5">
+                Shows privacy-respecting sponsor bookplates and book banners
+              </div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                v-model="adConfigState.enabled"
+                type="checkbox"
+                class="sr-only peer"
+                @change="handleSaveAdConfig"
+              />
+              <div class="w-11 h-6 bg-stone-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+            </label>
+          </div>
+
+          <!-- EthicalAds Network Publisher ID Option -->
+          <div class="p-3.5 bg-black/30 rounded-xl border border-stone-800 space-y-2">
+            <label class="block text-xs font-mono uppercase text-stone-300">
+              EthicalAds Publisher ID
+            </label>
+            <input
+              v-model="adConfigState.ethicalAdsPublisherId"
+              type="text"
+              placeholder="the-journal-library"
+              class="w-full px-3 py-2 bg-black/60 border border-stone-700 rounded-lg text-amber-100 text-xs font-mono focus:border-amber-500 focus:outline-none shadow-inner"
+              @change="handleSaveAdConfig"
+            />
+            <p class="text-[10px] font-mono text-stone-500">
+              Set your own EthicalAds.io publisher client ID or leave default.
+            </p>
+          </div>
+
+          <!-- Ad-Free Supporter Pass / Sponsor CTA -->
+          <div class="p-4 bg-gradient-to-r from-amber-950/40 via-amber-900/30 to-amber-950/40 rounded-xl border border-amber-600/30 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="font-serif-book font-bold text-amber-200 text-xs flex items-center gap-1.5">
+                <span>🌟</span> <span>Sovereign Patron (Ad-Free Pass)</span>
+              </span>
+              <span v-if="adConfigState.isAdFreeSupporter" class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-600/50 text-[10px] font-mono uppercase">
+                Active Patron ✓
+              </span>
+            </div>
+            <p class="text-xs text-stone-300 font-serif leading-relaxed">
+              Support development directly via GitHub Sponsors to permanently disable all sponsor cards across all devices.
+            </p>
+            <div class="flex items-center gap-3 pt-1">
+              <a
+                href="https://github.com/sponsors"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-stone-950 font-serif-book font-bold text-xs uppercase tracking-wider transition cursor-pointer shadow flex items-center gap-1.5"
+              >
+                <span>💖</span> <span>Become a Sponsor</span> <span>↗</span>
+              </a>
+
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded border border-stone-700 hover:border-amber-500/60 text-stone-300 text-xs font-mono cursor-pointer transition"
+                @click="toggleSupporterStatus"
+              >
+                {{ adConfigState.isAdFreeSupporter ? 'Disable Supporter Badge' : 'I am a GitHub Sponsor' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ========================================================================= -->
       <!-- VIEW A: CONNECT GITHUB VAULT (UNLINKED)                                  -->
       <!-- ========================================================================= -->
-      <div v-if="!hasGitHubToken" class="space-y-5">
+      <div v-else-if="!hasGitHubToken" class="space-y-5">
         <!-- Modal Header -->
         <div class="flex items-center justify-between pb-3.5 border-b border-stone-800">
           <div class="flex items-center gap-2.5">
@@ -25,12 +161,6 @@
               </p>
             </div>
           </div>
-          <button
-            class="text-stone-400 hover:text-stone-200 text-lg p-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition"
-            @click="handleClose"
-          >
-            ✕
-          </button>
         </div>
 
         <!-- Explanation Card -->
@@ -144,12 +274,6 @@
               </span>
             </div>
           </div>
-          <button
-            class="text-stone-400 hover:text-stone-200 text-lg p-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition"
-            @click="handleClose"
-          >
-            ✕
-          </button>
         </div>
 
         <!-- GitHub Profile & Repository Info Card -->
@@ -262,8 +386,25 @@ import {
 } from '@/services/githubAuth'
 import { syncEngine } from '@/services/gitSyncEngine'
 import { db, provisionCleanLibrary } from '@/db'
+import {
+  getStoredAdConfig,
+  saveStoredAdConfig,
+  type EthicalAdConfig,
+} from '@/services/adService'
 
 const store = useLibraryStore()
+
+const activeModalTab = ref<'vault' | 'patron'>('vault')
+const adConfigState = ref<EthicalAdConfig>(getStoredAdConfig())
+
+function handleSaveAdConfig() {
+  saveStoredAdConfig(adConfigState.value)
+}
+
+function toggleSupporterStatus() {
+  adConfigState.value.isAdFreeSupporter = !adConfigState.value.isAdFreeSupporter
+  saveStoredAdConfig(adConfigState.value)
+}
 
 const isOpen = computed(() => store.isAuthModalOpen)
 const session = ref<AuthSession | null>(getStoredSession())

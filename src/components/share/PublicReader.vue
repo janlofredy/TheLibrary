@@ -111,6 +111,15 @@
           </div>
         </div>
       </div>
+
+      <!-- Reading Room Featured Sponsor / Ethical Ad -->
+      <div class="w-full max-w-xl mx-auto mt-6">
+        <EthicalAd
+          variant="card"
+          placementType="image"
+          :show-label="true"
+        />
+      </div>
     </main>
   </div>
 </template>
@@ -119,6 +128,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { fetchSharedGist, importSharedPayload, type SharedPayload } from '@/services/shareService'
 import { useLibraryStore } from '@/stores/libraryStore'
+import EthicalAd from '@/components/common/EthicalAd.vue'
 
 const props = defineProps<{
   gistId: string

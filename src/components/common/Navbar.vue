@@ -91,6 +91,15 @@
         </button>
 
         <button
+          type="button"
+          class="p-1.5 rounded text-xs font-mono border border-stone-800 bg-black/40 hover:border-amber-600/50 hover:bg-amber-950/40 text-stone-300 hover:text-amber-200 transition cursor-pointer flex items-center gap-1 shadow-sm"
+          title="Patron, Ethical Ads & Sponsorship Settings"
+          @click="store.openAuthModal('settings')"
+        >
+          <span>⚜️</span>
+        </button>
+
+        <button
           class="px-3 py-1.5 rounded text-xs font-serif-book tracking-wider border border-amber-900/60 bg-amber-950/30 hover:bg-amber-900/50 text-amber-200 transition cursor-pointer flex items-center gap-1.5"
           @click="store.openShelfModal()"
         >

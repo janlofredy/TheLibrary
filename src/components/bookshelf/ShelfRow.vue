@@ -73,7 +73,7 @@
         <!-- Add Book Button within shelf boundaries (when shelf has books) -->
         <div
           v-else-if="canFitNewBook"
-          class="absolute bottom-0 flex items-end"
+          class="absolute bottom-0 flex items-end gap-2"
           :style="{ left: `${trailingButtonX}px` }"
           @click.stop
         >
@@ -86,6 +86,14 @@
             <span class="text-xl font-light group-hover/add:scale-125 transition-transform">+</span>
             <span class="text-[9px] uppercase tracking-wider font-mono mt-1 opacity-0 group-hover/add:opacity-100 transition-opacity">New</span>
           </button>
+
+          <!-- Thematic Vintage Patron Bookplate Sponsor on Shelf (if extra room allows) -->
+          <div
+            v-if="canFitSponsorCard"
+            class="hidden md:flex flex-shrink-0 items-end ml-4"
+          >
+            <BookplateAd :sponsor-index="shelfOrderIndex" />
+          </div>
         </div>
       </div>
 
@@ -154,6 +162,7 @@ import type { Shelf, Book } from '@/types/journal'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { calculateSpineWidth, calculateBookHeight, getBookSizing, type NeighborInfo } from '@/utils/bookSizing'
 import BookSpine from './BookSpine.vue'
+import BookplateAd from './BookplateAd.vue'
 
 const props = defineProps<{
   shelf: Shelf
@@ -405,6 +414,17 @@ const trailingButtonX = computed(() => {
 const canFitNewBook = computed(() => {
   const canvasW = shelfWidth.value
   return trailingButtonX.value + 48 <= canvasW
+})
+
+const canFitSponsorCard = computed(() => {
+  const canvasW = shelfWidth.value
+  // A sponsor card is ~220px wide + gap
+  return trailingButtonX.value + 48 + 240 <= canvasW
+})
+
+const shelfOrderIndex = computed(() => {
+  const idx = store.currentShelves.findIndex(s => s.id === props.shelf.id)
+  return idx >= 0 ? idx : 0
 })
 
 function resolveNonOverlappingPosition(

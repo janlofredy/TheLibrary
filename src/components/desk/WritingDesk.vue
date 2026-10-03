@@ -168,6 +168,20 @@
           </div>
         </div>
       </div>
+
+      <!-- Discreet Desk Corner Patron Bookmark (Hidden in Focus Mode) -->
+      <aside
+        v-if="!isFocusMode"
+        class="hidden xl:block absolute -right-64 top-12 w-56 pointer-events-auto"
+      >
+        <div class="p-3 rounded-lg bg-[#18110b]/90 border border-amber-900/40 shadow-xl backdrop-blur-xs">
+          <EthicalAd
+            variant="bookmark"
+            placementType="text"
+            :show-label="true"
+          />
+        </div>
+      </aside>
     </main>
 
     <!-- Bottom Page Navigation Desk Bar -->
@@ -226,6 +240,7 @@ import { ref, computed, watch } from 'vue'
 import { useLibraryStore } from '@/stores/libraryStore'
 import type { PaperStyle, Mood } from '@/types/journal'
 import PaperEditor from './PaperEditor.vue'
+import EthicalAd from '@/components/common/EthicalAd.vue'
 
 const store = useLibraryStore()
 
