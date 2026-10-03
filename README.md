@@ -46,3 +46,14 @@ See [`SPECIFICATION.md`](./SPECIFICATION.md) for the complete product design, ph
 - **Storage**: IndexedDB (Dexie.js) + GitHub REST API (Octokit)
 - **Editor**: Tiptap (Rich Text & Markdown)
 - **Deployment**: GitHub Pages via GitHub Actions CI/CD
+
+---
+
+## 💖 Support My Open-Source Project
+
+If you love **The Journal Library** and want to support ongoing development, maintenance, and new features:
+
+- ☕ **[Buy Me a Coffee](https://buymeacoffee.com/janlofredyx)**: Fast one-time or monthly support
+- 💖 **[GitHub Sponsors](https://github.com/sponsors/janlofredy)**: Sponsor this repository directly on GitHub
+- 🌐 **[Portfolio & More Crafts](https://janlofre.com)**: Check out other open-source projects by Janlofredy
+
