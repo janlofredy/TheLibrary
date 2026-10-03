@@ -1,4 +1,4 @@
-import { db } from '@/db'
+import { db, DEMO_LIBRARY_ID } from '@/db'
 import { getStoredSession } from './githubAuth'
 import type { Page, PageConflict } from '@/types/journal'
 
@@ -124,6 +124,7 @@ class GitSyncEngine {
 
   /**
    * Pushes all local libraries, shelves, books, and pages to the GitHub repository.
+   * Strictly filters out the Demo Archive so demo data is never saved to the user's repository.
    */
   private async pushToGitHub(token: string, owner: string, repo: string) {
     const headers = {
@@ -140,11 +141,25 @@ class GitSyncEngine {
     const refData = await refRes.json()
     const latestCommitSha = refData.object.sha
 
-    // 2. Fetch all local data from Dexie
-    const libraries = await db.libraries.toArray()
-    const shelves = await db.shelves.toArray()
-    const books = await db.books.toArray()
-    const pages = await db.pages.toArray()
+    // 2. Fetch all local data from Dexie, strictly excluding demo archive items
+    const allLibraries = await db.libraries.toArray()
+    const libraries = allLibraries.filter(l => l.id !== DEMO_LIBRARY_ID)
+
+    if (libraries.length === 0) {
+      return
+    }
+
+    const userLibIds = new Set(libraries.map(l => l.id))
+    const allShelves = await db.shelves.toArray()
+    const shelves = allShelves.filter(s => userLibIds.has(s.libraryId) && !s.id.startsWith('shelf_demo_'))
+
+    const userShelfIds = new Set(shelves.map(s => s.id))
+    const allBooks = await db.books.toArray()
+    const books = allBooks.filter(b => userShelfIds.has(b.shelfId) && !b.id.startsWith('bk_demo_'))
+
+    const userBookIds = new Set(books.map(b => b.id))
+    const allPages = await db.pages.toArray()
+    const pages = allPages.filter(p => userBookIds.has(p.bookId) && !p.id.startsWith('pg_demo_'))
 
     // 3. Build Git Tree items
     interface TreeEntry {
@@ -323,6 +338,16 @@ class GitSyncEngine {
           const blobData = await fileRes.json()
           const decoded = atob(blobData.content)
           const parsed = JSON.parse(decoded)
+
+          // Never pull or overwrite demo archive items
+          if (
+            parsed.id === DEMO_LIBRARY_ID ||
+            String(parsed.id).startsWith('shelf_demo_') ||
+            String(parsed.id).startsWith('bk_demo_') ||
+            String(parsed.id).startsWith('pg_demo_')
+          ) {
+            continue
+          }
 
           if (blob.path === 'library.json' && parsed.id) {
             await db.libraries.put(parsed)

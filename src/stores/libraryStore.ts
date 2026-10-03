@@ -245,6 +245,15 @@ export const useLibraryStore = defineStore('library', () => {
     closeShareModal()
   }
 
+  function scheduleUserSync(delayMs = 15000) {
+    if (isGuestDemoMode.value || currentLibraryId.value === DEMO_LIBRARY_ID) {
+      return
+    }
+    if (session.value?.token) {
+      syncEngine.scheduleSync(delayMs)
+    }
+  }
+
   async function loadAll() {
     libraries.value = await db.libraries.toArray()
     shelves.value = await db.shelves.toArray()
@@ -272,7 +281,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     // Create a starter shelf
     await createShelf(newLib.id, 'My First Shelf', 'brass')
-    syncEngine.scheduleSync()
+    scheduleUserSync()
     return newLib
   }
 
@@ -283,7 +292,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       libraries.value[index] = { ...libraries.value[index], ...updates, updatedAt: now }
     }
-    syncEngine.scheduleSync()
+    scheduleUserSync()
   }
 
   async function deleteLibrary(id: string) {
@@ -299,7 +308,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (currentLibraryId.value === id && libraries.value.length > 0) {
       currentLibraryId.value = libraries.value[0].id
     }
-    syncEngine.scheduleSync()
+    scheduleUserSync()
   }
 
   async function createShelf(libraryId: string, name: string, nameplateStyle: NameplateStyle = 'brass') {
@@ -317,7 +326,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     await db.shelves.add(newShelf)
     shelves.value.push(newShelf)
-    syncEngine.scheduleSync()
+    scheduleUserSync()
     return newShelf
   }
 
@@ -328,7 +337,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       shelves.value[index] = { ...shelves.value[index], ...updates, updatedAt: now }
     }
-    syncEngine.scheduleSync()
+    scheduleUserSync()
   }
 
   async function deleteShelf(id: string) {
@@ -339,7 +348,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     await db.shelves.delete(id)
     shelves.value = shelves.value.filter(s => s.id !== id)
-    syncEngine.scheduleSync()
+    scheduleUserSync()
   }
 
   async function createBook(bookData: {
@@ -397,7 +406,7 @@ export const useLibraryStore = defineStore('library', () => {
     }
     await db.pages.add(firstPage)
 
-    syncEngine.scheduleSync()
+    scheduleUserSync()
     return newBook
   }
 
@@ -408,7 +417,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       books.value[index] = { ...books.value[index], ...updates, updatedAt: now }
     }
-    syncEngine.scheduleSync()
+    scheduleUserSync()
   }
 
   async function moveBookToPosition(bookId: string, targetShelfId: string, positionX: number) {
@@ -432,7 +441,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (activeOpenedBookId.value === id) {
       closeBook()
     }
-    syncEngine.scheduleSync()
+    scheduleUserSync()
   }
 
   // Desk and Page Actions
@@ -512,7 +521,7 @@ export const useLibraryStore = defineStore('library', () => {
 
     // Update book's dynamic page count
     await updateBook(activeOpenedBookId.value, { pageCount: activePages.value.length })
-    syncEngine.scheduleSync()
+    scheduleUserSync()
     return newPage
   }
 
@@ -523,7 +532,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (index !== -1) {
       activePages.value[index] = { ...activePages.value[index], ...updates, updatedAt: now }
     }
-    syncEngine.scheduleSync()
+    scheduleUserSync()
   }
 
   async function deletePage(id: string) {
@@ -555,7 +564,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (activeOpenedBookId.value) {
       await updateBook(activeOpenedBookId.value, { pageCount: activePages.value.length })
     }
-    syncEngine.scheduleSync()
+    scheduleUserSync()
   }
 
   function setPageIndex(index: number) {
@@ -665,7 +674,7 @@ export const useLibraryStore = defineStore('library', () => {
     if (choice === 'keep-local') {
       // Keep local page in Dexie, update timestamp and schedule sync to overwrite remote
       await db.pages.update(conflict.localPage.id, { updatedAt: now })
-      syncEngine.scheduleSync(3000)
+      scheduleUserSync(3000)
     } else if (choice === 'keep-remote') {
       // Overwrite local page with cloud version
       await db.pages.put({ ...conflict.remotePage, updatedAt: now })
@@ -683,7 +692,7 @@ export const useLibraryStore = defineStore('library', () => {
         wordCount: combinedWordCount,
         updatedAt: now,
       })
-      syncEngine.scheduleSync(3000)
+      scheduleUserSync(3000)
     } else if (choice === 'keep-both') {
       // Keep local as is, insert remote as an additional page
       const currentBookPages = await db.pages.where('bookId').equals(conflict.bookId).sortBy('pageNumber')
@@ -707,7 +716,7 @@ export const useLibraryStore = defineStore('library', () => {
       if (book) {
         await db.books.update(book.id, { pageCount: (book.pageCount || 0) + 1 })
       }
-      syncEngine.scheduleSync(3000)
+      scheduleUserSync(3000)
     }
 
     conflictsList.value = conflictsList.value.filter(c => c.id !== conflictId)
