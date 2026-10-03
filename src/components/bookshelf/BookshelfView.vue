@@ -110,13 +110,22 @@
       </div>
 
       <!-- Add New Shelf Button -->
-      <div v-if="shelves.length > 0" class="mt-4 mb-16">
+      <div v-if="shelves.length > 0" class="mt-4 mb-8">
         <button
           class="px-6 py-2.5 rounded-full border border-amber-600/40 bg-black/50 hover:bg-amber-950/60 hover:border-amber-500/80 text-amber-200/90 hover:text-amber-100 text-xs sm:text-sm tracking-widest uppercase font-serif-book transition-all duration-200 shadow-xl flex items-center gap-2 cursor-pointer"
           @click="store.openShelfModal()"
         >
           <span class="text-base font-light">+</span> Add New Shelf
         </button>
+      </div>
+
+      <!-- Bookshelf Sponsor & Ethical Ad Banner -->
+      <div class="w-full max-w-4xl mx-auto mb-16 px-4">
+        <EthicalAd
+          variant="banner"
+          placementType="image"
+          :allow-dismiss="true"
+        />
       </div>
     </div>
   </div>
@@ -126,6 +135,7 @@
 import { ref, computed } from 'vue'
 import { useLibraryStore } from '@/stores/libraryStore'
 import ShelfRow from './ShelfRow.vue'
+import EthicalAd from '@/components/common/EthicalAd.vue'
 
 const store = useLibraryStore()
 

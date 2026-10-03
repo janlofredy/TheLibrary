@@ -274,6 +274,15 @@
           </p>
         </div>
       </div>
+
+      <!-- Sovereign Library Benefactors & Ethical Ad -->
+      <div class="w-full max-w-3xl mx-auto mt-10">
+        <EthicalAd
+          variant="card"
+          placementType="image"
+          :show-label="true"
+        />
+      </div>
     </main>
 
     <!-- Footer -->
@@ -286,12 +295,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useLibraryStore } from '@/stores/libraryStore'
+import EthicalAd from '@/components/common/EthicalAd.vue'
 
 const store = useLibraryStore()
 
-const hasLocalLibrary = computed(() => store.libraries.length > 0)
-const localBooksCount = computed(() => store.books.length)
-const localShelvesCount = computed(() => store.shelves.length)
+const personalLibraries = computed(() => store.libraries.filter(l => l.id !== 'lib_grand_archive_demo'))
+const hasLocalLibrary = computed(() => personalLibraries.value.length > 0)
+
+const personalShelves = computed(() => {
+  const personalLibIds = new Set(personalLibraries.value.map(l => l.id))
+  return store.shelves.filter(s => personalLibIds.has(s.libraryId))
+})
+
+const localShelvesCount = computed(() => personalShelves.value.length)
+
+const localBooksCount = computed(() => {
+  const shelfIds = new Set(personalShelves.value.map(s => s.id))
+  return store.books.filter(b => shelfIds.has(b.shelfId)).length
+})
 
 function getParticleStyle(index: number) {
   const left = ((index * 37) % 100)

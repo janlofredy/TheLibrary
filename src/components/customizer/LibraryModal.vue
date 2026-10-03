@@ -175,6 +175,7 @@ function handleClose() {
 
 function handleSelectLibrary(id: string) {
   store.setLibrary(id)
+  store.isGuestDemoMode = (id === 'lib_grand_archive_demo')
   isCreatingNew.value = false
 }
 
